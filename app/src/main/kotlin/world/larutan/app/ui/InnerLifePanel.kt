@@ -1,6 +1,8 @@
 package world.larutan.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import world.larutan.app.ui.model.DriveBar
 import world.larutan.app.ui.model.FollowedBeing
 import world.larutan.app.ui.model.GoalView
+import world.larutan.app.ui.model.GodAction
 import world.larutan.app.ui.model.RelationView
 import world.larutan.app.ui.theme.Clay
 import world.larutan.app.ui.theme.Ember
@@ -36,9 +40,14 @@ import world.larutan.app.ui.theme.Tide
  * The 2D view is the map; this panel is the product.
  */
 @Composable
-fun InnerLifePanel(being: FollowedBeing, modifier: Modifier = Modifier) {
+fun InnerLifePanel(
+    being: FollowedBeing,
+    onGod: (GodAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Header(being)
+        GodTouch(onGod)
         if (being.emotions.isNotEmpty()) Emotions(being.emotions)
         being.lastThought?.let { Utterance(label = "Thinking", text = it) }
         being.goal?.let { Goal(it) }
@@ -72,6 +81,28 @@ private fun Header(b: FollowedBeing) {
             style = MaterialTheme.typography.titleMedium,
             color = moodColor(b.valence),
         )
+    }
+}
+
+@Composable
+private fun GodTouch(onGod: (GodAction) -> Unit) {
+    // Reach in. Powerful and free -- the being's own systems metabolise what you do.
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        GodAction.entries.forEach { action ->
+            Text(
+                action.label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .clickable { onGod(action) }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
     }
 }
 

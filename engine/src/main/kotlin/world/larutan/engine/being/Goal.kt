@@ -70,13 +70,16 @@ data class Goal(
                 var fit = 0.2
                 when (kind) {
                     GoalKind.EXPLORE -> fit += personality.curiosity + personality.boldness * 0.4
-                    GoalKind.PROVIDE -> fit += personality.industry * 0.6 + if (nearlyStarved) 0.9 else 0.0
+                    GoalKind.PROVIDE -> fit += personality.industry * 0.6 + if (nearlyStarved) 0.5 else 0.0
                     GoalKind.MASTER_FORAGING -> fit += personality.industry + personality.curiosity * 0.3
                     GoalKind.BUILD_SHELTER -> fit += personality.industry * 0.8 + if (nearlyStarved) 0.3 else 0.0
                     GoalKind.FAMILY -> fit += personality.warmth
                     GoalKind.BELONG -> fit += (0.5 - personality.warmth) * 0.6 + if (personality.isAtypical) 0.6 else 0.0
                     GoalKind.PROTECT -> fit += personality.warmth * 0.6 + if (lostSomeone) 0.8 else 0.0
                 }
+                // A small, stable per-being lean so two similar lives still reach for
+                // different things instead of everyone wanting the same one.
+                fit += jitter(kind, personality)
                 kind to fit
             }
             val best = scored.maxByOrNull { it.second } ?: return null
@@ -95,6 +98,17 @@ data class Goal(
                 intensity = (0.4 + best.second * 0.2).coerceIn(0.3, 1.0),
             )
         }
+
+        /** A deterministic, small [0, 0.3) lean per (being, goal) drawn from their traits. */
+        private fun jitter(kind: GoalKind, p: Personality): Double {
+            val seed = (p.boldness * 31 + p.warmth * 17 + p.curiosity * 13 + p.industry * 7 +
+                p.optimism * 5 + p.temper * 3 + p.resilience * 2) * 1000 + kind.ordinal * 97
+            val h = (seed.toLong() * -0x61c8864680b583ebL)
+            return ((h ushr 40).toDouble() / (1L shl 24)) * 0.3
+        }
+
+        /** The path for a goal kind. Public so the god layer can plant a goal directly. */
+        fun milestonesForPublic(kind: GoalKind): MutableList<Milestone> = milestonesFor(kind)
 
         private fun milestonesFor(kind: GoalKind): MutableList<Milestone> = when (kind) {
             GoalKind.EXPLORE -> mutableListOf(

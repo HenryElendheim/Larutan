@@ -96,6 +96,7 @@ class Simulation(
     }
 
     private fun age(b: Being) {
+        if (b.immortal) return // a granted immortality halts aging entirely
         // Age in world-years; a year is DAYS_PER_SEASON*4 days of TICKS_PER_DAY ticks.
         val ticksPerYear = World.DAYS_PER_SEASON * 4 * World.TICKS_PER_DAY
         b.ageYears += 1.0 / ticksPerYear
@@ -469,6 +470,11 @@ class Simulation(
     }
 
     private fun checkMortality(b: Being) {
+        if (b.immortal) {
+            // Held back from the edge: never quite empties, never dies.
+            if (b.drives[DriveType.HEALTH] < 5.0) b.drives[DriveType.HEALTH] = 5.0
+            return
+        }
         if (b.drives[DriveType.HEALTH] > 0.0 && b.ageYears < 80) return
         val cause = when {
             b.drives[DriveType.HUNGER] < 10 -> "hunger"

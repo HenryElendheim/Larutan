@@ -1,6 +1,8 @@
 package world.larutan.app
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -14,28 +16,37 @@ import world.larutan.app.ui.model.BeingDot
 import world.larutan.app.ui.model.DriveBar
 import world.larutan.app.ui.model.FollowedBeing
 import world.larutan.app.ui.model.GoalView
+import world.larutan.app.ui.model.GodAction
 import world.larutan.app.ui.model.RelationView
+import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.Speed
 import world.larutan.app.ui.model.UiState
 import world.larutan.app.ui.model.WorldInfo
 import world.larutan.engine.being.Being
 import world.larutan.engine.being.DriveType
 import world.larutan.engine.being.Sentiment
+import world.larutan.engine.god.God
+import world.larutan.engine.sim.Persistence
 import world.larutan.engine.sim.Simulation
 import world.larutan.engine.sim.WorldConfig
 import world.larutan.engine.sim.WorldGen
 import world.larutan.engine.world.World
+import java.io.File
 
 /**
  * Holds the living world and turns it, and hands Compose an immutable snapshot to
  * draw after every tick. The engine does the thinking; this just paces it and
  * translates state into something the UI can render.
  */
-class SimulationViewModel : ViewModel() {
+class SimulationViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val sim: Simulation
+    private var sim: Simulation
+    private var god: God
     private var loop: Job? = null
-    private var active = true // false while the app is backgrounded — the world waits for you
+    private var active = true // false while the app is backgrounded -> the world waits for you
+
+    // The world survives being closed: continuity is the point.
+    private val saveFile = File(app.filesDir, "world.json")
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -44,9 +55,34 @@ class SimulationViewModel : ViewModel() {
     private var followedId: Int = 0
 
     init {
+        sim = loadOrCreate()
+        god = God(sim)
+        publish()
+    }
+
+    private fun loadOrCreate(): Simulation {
+        if (saveFile.exists()) {
+            try {
+                return Persistence.restore(Persistence.deserialize(saveFile.readText()))
+            } catch (e: Exception) {
+                Log.w("Larutan", "Could not load saved world, starting fresh", e)
+            }
+        }
+        val config = WorldConfig(width = 32, height = 32, startingPopulation = 5)
+        val (world, beings) = WorldGen.create(config)
+        return Simulation(config, world, beings)
+    }
+
+    /** Start a brand new world, discarding the current one. */
+    fun newWorld() {
+        speed = Speed.PAUSED
+        loop?.cancel()
         val config = WorldConfig(width = 32, height = 32, startingPopulation = 5)
         val (world, beings) = WorldGen.create(config)
         sim = Simulation(config, world, beings)
+        god = God(sim)
+        followedId = 0
+        save()
         publish()
     }
 
@@ -70,10 +106,35 @@ class SimulationViewModel : ViewModel() {
         }
     }
 
-    /** Time only advances while you're watching (§10.4). */
+    /** Reach in and touch the being you're following. */
+    fun invoke(action: GodAction) {
+        val id = followedId
+        when (action) {
+            GodAction.PROVIDE -> god.provide(id)
+            GodAction.WARM -> god.warm(id)
+            GodAction.BLESS -> god.bless(id)
+            GodAction.INSPIRE -> god.inspire(id)
+            GodAction.IMMORTALITY -> god.grantImmortality(id)
+        }
+        publish()
+    }
+
+    /** Time only advances while you're watching (§10.4), and the world is saved when you leave. */
     fun setActive(isActive: Boolean) {
         active = isActive
+        if (!isActive) save()
         restartLoop()
+    }
+
+    private fun save() {
+        val snapshot = Persistence.snapshot(sim)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                saveFile.writeText(Persistence.serialize(snapshot))
+            } catch (e: Exception) {
+                Log.w("Larutan", "Could not save world", e)
+            }
+        }
     }
 
     private fun restartLoop() {
@@ -115,6 +176,17 @@ class SimulationViewModel : ViewModel() {
                 population = sim.living().size,
             ),
             beings = sim.beings.map { it.toDot(followed?.id) },
+            roster = sim.beings
+                .sortedWith(compareByDescending<Being> { it.alive }.thenByDescending { it.generation })
+                .map { b ->
+                    RosterEntry(
+                        id = b.id,
+                        name = b.name,
+                        alive = b.alive,
+                        selected = b.id == followed?.id,
+                        note = if (b.alive) b.lifeStage.label else "lost to ${b.deathCause ?: "the world"}",
+                    )
+                },
             followed = followed?.toFollowed(),
             speed = speed,
             chronicle = sim.chronicle.significant(8).map { it.text }.reversed(),

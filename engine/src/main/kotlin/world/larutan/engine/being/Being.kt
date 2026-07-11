@@ -51,6 +51,7 @@ class Being(
     var generation: Int = 1,
     var ageYears: Double = 20.0,
     var alive: Boolean = true,
+    var immortal: Boolean = false, // a god's gift: halts aging and holds death away
     var birthTick: Long = 0,
     /** A stable seed for the being's dot colour in the 2D view. */
     val appearanceSeed: Int = 0,

@@ -12,10 +12,29 @@ enum class Speed(val label: String, val tickDelayMillis: Long) {
 data class UiState(
     val world: WorldInfo = WorldInfo(),
     val beings: List<BeingDot> = emptyList(),
+    val roster: List<RosterEntry> = emptyList(),
     val followed: FollowedBeing? = null,
     val speed: Speed = Speed.PAUSED,
     val chronicle: List<String> = emptyList(),
 )
+
+/** One row in the who-to-follow picker. */
+data class RosterEntry(
+    val id: Int,
+    val name: String,
+    val alive: Boolean,
+    val selected: Boolean,
+    val note: String, // life stage, or how they died
+)
+
+/** The powers you can reach in with, aimed at the being you're following. */
+enum class GodAction(val label: String) {
+    PROVIDE("Provide"),
+    WARM("Warm"),
+    BLESS("Bless"),
+    INSPIRE("Inspire"),
+    IMMORTALITY("Make ageless"),
+}
 
 data class WorldInfo(
     val width: Int = 32,

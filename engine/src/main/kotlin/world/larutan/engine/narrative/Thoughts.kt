@@ -56,10 +56,13 @@ object Thoughts {
             ))
             DriveType.THIRST -> pick(rng, listOf(
                 "My throat is dry. Water first, then everything else.",
+                "I can hear the river from here. Good.",
+                "Thirsty. Funny how it's always the small needs that nag loudest.",
             ))
             DriveType.WARMTH -> pick(rng, listOf(
                 "The cold gets into your bones out here. I need shelter.",
                 "$season bites. I keep thinking of somewhere warm.",
+                "If I can just stay warm through this, I'll be all right.",
             ))
             DriveType.ENERGY -> pick(rng, listOf(
                 "I'm worn through. I could sleep where I stand.",
@@ -86,15 +89,18 @@ object Thoughts {
             else -> if (valence > 0.3) pick(rng, listOf(
                 "It's a fair day. I'll take it.",
                 "Fed, warm, no one gone. That's enough, some days.",
+                "The $place is quiet in a good way today.",
+                "I don't need much. A day like this is close to it.",
             )) else pick(rng, listOf(
                 "Another day in the $place. It passes.",
+                "Some days you just put one foot after the other.",
+                "I keep waiting to feel like myself again.",
             ))
         }
     }
 
     /** A short dream: unmet desire + a heavy memory + a touch of the surreal. */
     fun dream(being: Being, nameOf: (Int) -> String, rng: Rng): String {
-        val heavy = being.memory.heaviest()
         val dominant = being.drives.dominant()
         val lostId = being.memory.events.firstOrNull { it.valenceAtTime < -0.5 && it.subjectId != null }?.subjectId
 
@@ -116,13 +122,11 @@ object Thoughts {
             DriveType.CONNECTION -> pick(rng, listOf(
                 "I dreamed the tiles were full of people, all of them turning to look at me and smile.",
             ))
-            else -> {
-                val fragment = heavy?.detail ?: "the river"
-                pick(rng, listOf(
-                    "A strange one — I was back at $fragment, but the sky was underfoot.",
-                    "I dreamed of walking somewhere I've never been, sure I'd been there before.",
-                ))
-            }
+            else -> pick(rng, listOf(
+                "A strange one — the river ran uphill, and the sky was underfoot.",
+                "I dreamed of walking somewhere I've never been, sure I'd been there before.",
+                "I dreamed the whole world was one long summer, and no one was ever cold.",
+            ))
         }
     }
 

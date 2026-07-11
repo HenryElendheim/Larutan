@@ -9,7 +9,9 @@ plugins {
 dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
-    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit5"))
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.11.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.3")
 }
 
 kotlin {
