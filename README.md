@@ -6,9 +6,6 @@ life: their needs, feelings, memories, dreams, relationships, and the things
 they slowly reach for. You pick one to follow and watch a life unfold, hour by
 hour and season by season.
 
-The name is "natural" spelled backwards: a world that behaves naturally, built
-from the inside out.
-
 ## What it does
 
 - Simulates a small group of beings whose behaviour comes from their own drives,

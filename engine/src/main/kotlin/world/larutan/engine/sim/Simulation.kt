@@ -67,6 +67,9 @@ class Simulation(
     // ---- per-being update ---------------------------------------------------
 
     private fun updateBeing(b: Being, startOfNight: Boolean) {
+        // One being's hour, in order:
+        // age -> needs drift -> health -> feelings -> (sleep?) -> pick and do an
+        // action -> nudge their goal -> cope if hurting -> maybe a thought -> live or die.
         age(b)
         driftDrives(b)
         healthEffects(b)
@@ -169,6 +172,8 @@ class Simulation(
     // ---- decision loop ------------------------------------------------------
 
     private fun chooseAction(b: Being): ActionType {
+        // Score every option -> weight it by who they are and what's around them ->
+        // usually take the best, but leave a little room for surprise.
         val candidates = ActionType.entries.filter { it != ActionType.GRIEVE }
         val scores = DoubleArray(candidates.size) { i -> utility(b, candidates[i]) }
         // Low temperature: the best action usually wins, but a little chance keeps
