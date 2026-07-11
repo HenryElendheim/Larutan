@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      A minimal, dark base theme. Colours and typography are owned by Compose
+      (see ui/theme). This just gives the window a dark surface from the first
+      frame, before Compose draws, so the app never flashes white on launch.
+    -->
+    <style name="Theme.Larutan" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@color/window_background</item>
+        <item name="android:navigationBarColor">@color/window_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
