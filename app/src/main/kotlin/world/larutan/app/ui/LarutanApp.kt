@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import world.larutan.app.SimulationViewModel
 import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.RosterFilter
+import world.larutan.app.ui.model.TimelineMomentView
 import world.larutan.app.ui.model.UiState
 
 /**
@@ -57,6 +58,10 @@ fun LarutanApp(vm: SimulationViewModel) {
             onSpeed = vm::setSpeed,
             onStep = vm::stepOnce,
         )
+
+        if (state.timeline.isNotEmpty()) {
+            TimelineStrip(state.timeline, onRewind = vm::rewindTo)
+        }
 
         RosterControls(
             filter = state.rosterFilter,
@@ -202,6 +207,37 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 7.dp),
     )
+}
+
+@Composable
+private fun TimelineStrip(moments: List<TimelineMomentView>, onRewind: (Long) -> Unit) {
+    // Reverse time: tap a moment to roll the whole world back to it. The moment the
+    // world is sitting at now is highlighted; anything after a rewind is let go.
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            "REWIND",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium,
+        )
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            moments.forEach { m ->
+                Text(
+                    m.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (m.isNow) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (m.isNow) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                        .clickable { onRewind(m.tick) }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable

@@ -21,6 +21,7 @@ import world.larutan.app.ui.model.RelationView
 import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.RosterFilter
 import world.larutan.app.ui.model.Speed
+import world.larutan.app.ui.model.TimelineMomentView
 import world.larutan.app.ui.model.UiState
 import world.larutan.app.ui.model.WorldInfo
 import world.larutan.engine.being.Being
@@ -29,6 +30,7 @@ import world.larutan.engine.being.Sentiment
 import world.larutan.engine.god.God
 import world.larutan.engine.sim.Persistence
 import world.larutan.engine.sim.Simulation
+import world.larutan.engine.sim.Timeline
 import world.larutan.engine.sim.WorldConfig
 import world.larutan.engine.sim.WorldGen
 import world.larutan.engine.world.World
@@ -46,6 +48,9 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
     private var loop: Job? = null
     private var active = true // false while the app is backgrounded -> the world waits for you
 
+    // A rolling history of the world, so time can be rolled back (§10.5). Session-only.
+    private val timeline = Timeline()
+
     // The world survives being closed: continuity is the point.
     private val saveFile = File(app.filesDir, "world.json")
 
@@ -60,6 +65,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
     init {
         sim = loadOrCreate()
         god = God(sim)
+        timeline.record(sim) // the moment you arrive is the first you can return to
         publish()
     }
 
@@ -85,6 +91,8 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         sim = Simulation(config, world, beings)
         god = God(sim)
         followedId = 0
+        timeline.clear()
+        timeline.record(sim)
         save()
         publish()
     }
@@ -118,8 +126,20 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         if (sim.living().isEmpty()) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) { sim.step() }
+            timeline.maybeRecord(sim)
             publish()
         }
+    }
+
+    /** Reverse time: roll the whole world back to an earlier moment, then hold there (§10.5). */
+    fun rewindTo(tick: Long) {
+        val json = timeline.rewindTo(tick) ?: return
+        speed = Speed.PAUSED
+        loop?.cancel()
+        sim = Persistence.restore(Persistence.deserialize(json))
+        god = God(sim)
+        save()
+        publish()
     }
 
     /** Reach in and touch the being you're following. */
@@ -162,6 +182,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             while (true) {
                 if (sim.living().isEmpty()) break
                 withContext(Dispatchers.Default) { sim.step() }
+                timeline.maybeRecord(sim)
                 publish()
                 delay(speed.tickDelayMillis)
             }
@@ -200,6 +221,9 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             realmFilter = realmFilter,
             followed = followed?.toFollowed(),
             speed = speed,
+            timeline = timeline.moments().map {
+                TimelineMomentView(tick = it.tick, label = it.label, isNow = it.tick == world.tick)
+            },
             chronicle = sim.chronicle.significant(8).map { it.text }.reversed(),
         )
     }

@@ -24,7 +24,15 @@ data class UiState(
     val realmFilter: String? = null, // null means every realm; otherwise a realm label
     val followed: FollowedBeing? = null,
     val speed: Speed = Speed.PAUSED,
+    val timeline: List<TimelineMomentView> = emptyList(),
     val chronicle: List<String> = emptyList(),
+)
+
+/** One moment you can roll the world back to. */
+data class TimelineMomentView(
+    val tick: Long,
+    val label: String,
+    val isNow: Boolean, // the moment the world is sitting at right now
 )
 
 /** One row in the who-to-follow picker. */
