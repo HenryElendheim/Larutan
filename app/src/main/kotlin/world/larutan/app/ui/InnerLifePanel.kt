@@ -98,6 +98,14 @@ private fun Header(b: FollowedBeing) {
             style = MaterialTheme.typography.titleMedium,
             color = moodColor(b.valence),
         )
+        // A visible store, so foresight, hoarding, and sharing read at a glance.
+        if (b.alive && b.foodStore > 0) {
+            Text(
+                "Carrying a store of ${b.foodStore}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

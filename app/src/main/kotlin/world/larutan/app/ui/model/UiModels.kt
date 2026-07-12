@@ -94,6 +94,7 @@ data class FollowedBeing(
     val action: String,
     val mood: String,
     val atypical: Boolean,
+    val foodStore: Int,        // what they're carrying put by, so hoarding and sharing read
     val alive: Boolean,
     val immortal: Boolean,
     val realm: String?,        // set once they've died

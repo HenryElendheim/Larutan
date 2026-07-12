@@ -198,6 +198,8 @@ class Simulation(
         u *= personalityWeight(b, action)
         u *= contextModifier(b, action)
         u += goalBias(b, action)
+        // A being scarred by hunger keeps foraging past need, building a store against it.
+        if (action == ActionType.FORAGE) u += hoardingPull(b) * 0.4
         return u.coerceAtLeast(0.0)
     }
 
@@ -369,8 +371,53 @@ class Simulation(
         // The old show the young how, and pass on what they believe -> culture begins here (§9).
         teachIfElder(b, other)
         teachIfElder(other, b)
+        maybeShareFood(b, other)
         maybeReproduce(b, other)
     }
+
+    // ---- food and society (§3.5) --------------------------------------------
+
+    /**
+     * The one with more may feed a hungry, cared-for other -> a child, a mate, a close
+     * friend. Generosity leans on warmth; a being scarred by past hunger hoards instead,
+     * far slower to give away what might be needed later.
+     */
+    private fun maybeShareFood(a: Being, b: Being) {
+        val giver = if (a.foodStore >= b.foodStore) a else b
+        val taker = if (giver === a) b else a
+        if (taker.drives[DriveType.HUNGER] >= 45) return // only the genuinely hungry
+        val willingness = (0.25 + giver.personality.warmth * 0.35 - hoardingPull(giver)).coerceIn(0.0, 0.8)
+        if (!rng.chance(willingness)) return
+        shareFood(giver, taker)
+    }
+
+    /**
+     * Hand food from one being to another if there's a surplus, a real hunger, and a bond
+     * worth feeding. Returns whether anything was shared. Kept apart from the willingness
+     * roll so the act itself is plain and testable.
+     */
+    internal fun shareFood(giver: Being, taker: Being): Boolean {
+        if (giver.foodStore < 12.0) return false                 // nothing to spare
+        if (taker.drives[DriveType.HUNGER] >= 45) return false    // no real hunger to answer
+        val rel = giver.relationshipWith(taker.id)
+        val cares = rel.bond > 35 || taker.id in giver.lineage.children || giver.lineage.mate == taker.id
+        if (!cares) return false
+
+        val amount = minOf(giver.foodStore * 0.4, 20.0)
+        giver.foodStore -= amount
+        taker.drives.change(DriveType.HUNGER, amount * 1.6)
+        giver.relationshipWith(taker.id).warm(3.0)
+        taker.relationshipWith(giver.id).warm(3.0)
+        giver.moralLedger += 0.05 // feeding another weighs to the good
+        taker.hold(BeliefKind.OTHERS_CAN_BE_TRUSTED, 0.05, "being fed when hungry")
+        record(giver, MemoryKind.HELPED, "shared food with ${taker.name}", 0.3, 0.4, taker.id)
+        record(taker, MemoryKind.COMFORTED, "fed by ${giver.name} when hungry", 0.3, 0.5, giver.id)
+        return true
+    }
+
+    /** How strongly past starvation has turned a being toward hoarding: 0 (never hungry) .. 0.6. */
+    private fun hoardingPull(b: Being): Double =
+        (b.memory.events.count { it.kind == MemoryKind.STARVED } * 0.15).coerceAtMost(0.6)
 
     /**
      * An elder near a child hands down what they know: a nudge toward their skill, and
