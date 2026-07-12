@@ -109,6 +109,8 @@ data class FollowedBeing(
     val pastThoughts: List<String>, // the thoughts they carried, readable after they're gone
     val memories: List<String>,
     val relationships: List<RelationView>,
+    val skills: List<DriveBar>,     // what they've learned to do well (reuses the labelled-bar shape)
+    val beliefs: List<String>,      // what they've come to believe from what they've lived
 )
 
 data class DriveBar(val label: String, val value: Float)

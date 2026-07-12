@@ -28,6 +28,7 @@ import world.larutan.app.ui.model.WorldInfo
 import world.larutan.engine.being.Being
 import world.larutan.engine.being.DriveType
 import world.larutan.engine.being.Sentiment
+import world.larutan.engine.being.SkillType
 import world.larutan.engine.event.WorldEvent
 import world.larutan.engine.god.God
 import world.larutan.engine.sim.Persistence
@@ -370,6 +371,10 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                         bond = (r.bond / 100f).toFloat(),
                     )
                 },
+            skills = SkillType.entries
+                .filter { skills[it] > 0.02 } // only what they've actually begun to learn
+                .map { DriveBar(it.label, skills[it].toFloat()) },
+            beliefs = beliefs.sortedByDescending { it.strength }.take(5).map { it.statement },
         )
     }
 

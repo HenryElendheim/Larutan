@@ -3,6 +3,7 @@ package world.larutan.engine.sim
 import world.larutan.engine.Rng
 import world.larutan.engine.action.ActionType
 import world.larutan.engine.being.Being
+import world.larutan.engine.being.BeliefKind
 import world.larutan.engine.being.DriveType
 import world.larutan.engine.being.EmotionName
 import world.larutan.engine.being.Goal
@@ -13,6 +14,7 @@ import world.larutan.engine.being.MemoryKind
 import world.larutan.engine.being.Personality
 import world.larutan.engine.being.Realm
 import world.larutan.engine.being.Sentiment
+import world.larutan.engine.being.SkillType
 import world.larutan.engine.event.Chronicle
 import world.larutan.engine.event.EventKind
 import world.larutan.engine.event.WorldEvent
@@ -132,7 +134,10 @@ class Simulation(
         b.drives.change(DriveType.HEALTH, dh)
 
         if (hunger < 8) recordOnce(b, MemoryKind.STARVED, "going hungry in ${world.season.label}", -0.8, 0.8)
-        if (warmth < 8) recordOnce(b, MemoryKind.FROZE, "the cold in ${world.season.label}", -0.8, 0.8)
+        if (warmth < 8) {
+            recordOnce(b, MemoryKind.FROZE, "the cold in ${world.season.label}", -0.8, 0.8)
+            b.hold(BeliefKind.WINTERS_ARE_CRUEL, 0.06, "a cold that nearly took them")
+        }
     }
 
     // ---- emotion ------------------------------------------------------------
@@ -261,10 +266,13 @@ class Simulation(
                 val tile = nearestFood(b)
                 if (tile != null && stepToward(b, tile.first, tile.second)) {
                     val t = world.tileAt(b.x, b.y)
-                    val gathered = minOf(t.food, 16.0 * forageSkill(b) * world.season.foodYield.coerceAtLeast(0.2))
+                    // Life stage sets the body's capability; learned foraging skill sharpens it.
+                    val skillBonus = 0.75 + 0.5 * b.skills[SkillType.FORAGING]
+                    val gathered = minOf(t.food, 16.0 * forageSkill(b) * skillBonus * world.season.foodYield.coerceAtLeast(0.2))
                     t.food -= gathered
                     b.drives.change(DriveType.HUNGER, gathered * 0.7)
                     b.foodStore += gathered * 0.8
+                    b.skills.practice(SkillType.FORAGING, 0.008) // you learn the ground by working it
                     record(b, MemoryKind.FORAGED, "foraging the ${t.terrain.label}", 0.15, 0.1)
                 }
             }
@@ -300,6 +308,7 @@ class Simulation(
                 stepOutward(b)
                 b.drives.change(DriveType.CURIOSITY, 18.0)
                 b.drives.change(DriveType.AUTONOMY, 9.0)
+                b.hold(BeliefKind.THE_FAR_PLACES_CALL, 0.03, "the pull of ground never walked")
                 if (rng.chance(0.05)) record(b, MemoryKind.EXPLORED, "ground no one I know has walked", 0.4, 0.3)
             }
             ActionType.BUILD -> {
@@ -308,7 +317,10 @@ class Simulation(
                     val t = world.tileAt(b.x, b.y)
                     val used = minOf(t.materials, 8.0)
                     t.materials -= used
-                    b.drives.change(DriveType.SECURITY, used * 2.0)
+                    // A skilled builder gets more shelter from the same materials.
+                    val skillBonus = 0.75 + 0.5 * b.skills[SkillType.BUILDING]
+                    b.drives.change(DriveType.SECURITY, used * 2.0 * skillBonus)
+                    b.skills.practice(SkillType.BUILDING, 0.012)
                 }
             }
             ActionType.REFLECT -> {
@@ -352,8 +364,34 @@ class Simulation(
         }
         if (rel.sentiment == Sentiment.FRIENDSHIP || rel.sentiment == Sentiment.LOVE) {
             record(b, MemoryKind.SOCIALIZED, "time with ${other.name}", 0.2, 0.25, other.id)
+            b.hold(BeliefKind.OTHERS_CAN_BE_TRUSTED, 0.04, "being known and not turned away")
         }
+        // The old show the young how, and pass on what they believe -> culture begins here (§9).
+        teachIfElder(b, other)
+        teachIfElder(other, b)
         maybeReproduce(b, other)
+    }
+
+    /**
+     * An elder near a child hands down what they know: a nudge toward their skill, and
+     * a fainter version of their firmest conviction. Passed on weaker and imperfect,
+     * a belief drifts as it travels a lineage -> the seed of shared story and myth (§9).
+     */
+    private fun teachIfElder(teacher: Being, student: Being) {
+        val teaching = teacher.lifeStage.label == "adult" || teacher.lifeStage.label == "elder"
+        val learning = student.lifeStage.label == "child" || student.lifeStage.label == "adolescent"
+        if (!teaching || !learning) return
+        if (!rng.chance(0.15)) return
+
+        student.skills.learnFrom(teacher.skills[SkillType.FORAGING], SkillType.FORAGING)
+        student.skills.learnFrom(teacher.skills[SkillType.BUILDING], SkillType.BUILDING)
+
+        val belief = teacher.beliefs.maxByOrNull { it.strength } ?: return
+        val isNew = student.beliefs.none { it.kind == belief.kind }
+        student.hold(belief.kind, 0.15, "what an elder taught")
+        if (isNew && rng.chance(0.3)) {
+            chronicle.add(WorldEvent(world.tick, EventKind.BOND_FORMED, "${teacher.name} taught ${student.name} that ${belief.statement}.", teacher.id, student.id))
+        }
     }
 
     // ---- goals --------------------------------------------------------------
@@ -391,6 +429,9 @@ class Simulation(
             b.moralLedger += when (g.kind) {
                 GoalKind.FAMILY, GoalKind.PROTECT, GoalKind.BELONG -> 1.0
                 else -> 0.3
+            }
+            if (g.kind == GoalKind.PROVIDE || g.kind == GoalKind.MASTER_FORAGING || g.kind == GoalKind.BUILD_SHELTER) {
+                b.hold(BeliefKind.HARD_WORK_PROVIDES, 0.2, "reaching what they worked for")
             }
             record(b, MemoryKind.ACHIEVED, "did the thing they set out to: ${g.target}", 0.9, 0.8)
             chronicle.add(WorldEvent(world.tick, EventKind.GOAL_ACHIEVED, "${b.name} achieved it: ${g.target}.", b.id, significant = true))
@@ -474,6 +515,10 @@ class Simulation(
         beings += child
         a.moralLedger += 0.4 // bringing up a life is one of the heavier good weights
         b.moralLedger += 0.4
+        // A child inherits a faint trace of a parent's firmest belief -> culture carried forward (§9).
+        (a.beliefs + b.beliefs).maxByOrNull { it.strength }?.let {
+            child.hold(it.kind, 0.2, "something a parent believed")
+        }
         record(a, MemoryKind.BORN, "a child, ${child.name}", 0.9, 0.9, child.id)
         record(b, MemoryKind.BORN, "a child, ${child.name}", 0.9, 0.9, child.id)
         chronicle.add(WorldEvent(world.tick, EventKind.BIRTH, "${child.name} was born to ${a.name} and ${b.name}.", child.id, significant = true))
@@ -513,6 +558,7 @@ class Simulation(
                 rel.sentiment = Sentiment.GRIEF
                 other.emotion.feel(EmotionName.GRIEF, (rel.bond / 100.0).coerceIn(0.2, 1.0))
                 other.emotion.distressLoad += rel.bond * 0.4
+                other.hold(BeliefKind.THE_WORLD_TAKES_WHAT_YOU_LOVE, 0.12, "losing ${b.name}")
                 record(other, MemoryKind.LOST, "lost ${b.name}", 1.0, -0.9, b.id)
             }
         }

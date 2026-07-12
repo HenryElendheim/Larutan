@@ -55,6 +55,8 @@ fun InnerLifePanel(
             being.lastThought?.let { Utterance(label = "Thinking", text = it) }
             being.goal?.let { Goal(it) }
             Drives(being.drives)
+            if (being.skills.isNotEmpty()) Skills(being.skills)
+            if (being.beliefs.isNotEmpty()) Beliefs("What they believe", being.beliefs)
             being.lastDream?.let { Utterance(label = "Last night's dream", text = it, dream = true) }
             if (being.relationships.isNotEmpty()) Relationships(being.relationships)
             if (being.memories.isNotEmpty()) Memories(being.memories)
@@ -64,6 +66,7 @@ fun InnerLifePanel(
             being.epitaph?.let { Utterance(label = "Remembered as", text = it, dream = true) }
             being.finalThought?.let { Utterance(label = "Final thought", text = it) }
             if (being.pastThoughts.isNotEmpty()) PastThoughts(being.pastThoughts)
+            if (being.beliefs.isNotEmpty()) Beliefs("What they believed", being.beliefs)
             if (being.relationships.isNotEmpty()) Relationships(being.relationships)
             if (being.memories.isNotEmpty()) Memories(being.memories)
         }
@@ -301,6 +304,48 @@ private fun Memories(memories: List<String>) {
         SectionLabel("What stays with them")
         memories.forEach { m ->
             Text("— $m", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun Skills(skills: List<DriveBar>) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
+    ) {
+        SectionLabel("What they've learned")
+        skills.forEach { s ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    s.label.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(96.dp),
+                )
+                Meter(s.value, Tide, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun Beliefs(title: String, beliefs: List<String>) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SectionLabel(title)
+        beliefs.forEach {
+            Text("— $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

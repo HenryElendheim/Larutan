@@ -46,6 +46,8 @@ class Being(
     val emotion: Emotion = Emotion(),
     val memory: MemoryLog = MemoryLog(),
     val relationships: MutableMap<Int, Relationship> = mutableMapOf(),
+    val skills: Skills = Skills(),
+    val beliefs: MutableList<Belief> = mutableListOf(),
     var goal: Goal? = null,
     val lineage: Lineage = Lineage(),
     var generation: Int = 1,
@@ -79,6 +81,16 @@ class Being(
         lastThought = text
         recentThoughts += text
         while (recentThoughts.size > 12) recentThoughts.removeAt(0)
+    }
+
+    /** Come to hold a belief, or hold an existing one a little more firmly. */
+    fun hold(kind: BeliefKind, delta: Double, bornFrom: String) {
+        val existing = beliefs.firstOrNull { it.kind == kind }
+        if (existing != null) {
+            existing.strength = (existing.strength + delta).coerceIn(0.0, 1.0)
+        } else if (delta > 0.0) {
+            beliefs += Belief(kind, delta.coerceIn(0.1, 1.0), bornFrom)
+        }
     }
 
     /** A rough one-line read of how they're doing, for logs and the panel header. */
