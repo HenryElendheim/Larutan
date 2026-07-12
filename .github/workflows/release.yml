@@ -20,7 +20,7 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 25   # a build shouldn't take this long -> fail fast if it hangs
+    timeout-minutes: 40   # GitHub's shared runners vary a lot; leave room for a slow one
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
@@ -30,6 +30,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle   # cache the Gradle dependencies so repeat builds don't refetch them
 
       - name: Set up the Android SDK
         uses: android-actions/setup-android@v3
