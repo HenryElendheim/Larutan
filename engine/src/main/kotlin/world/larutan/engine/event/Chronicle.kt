@@ -7,7 +7,15 @@ import kotlinx.serialization.Serializable
 enum class EventKind {
     BOND_FORMED, BOND_BROKEN, BIRTH, DEATH,
     GOAL_FORMED, MILESTONE, GOAL_ACHIEVED, GOAL_FAILED,
-    HARDSHIP, WEATHER, SEASON_TURN, COPED,
+    HARDSHIP, WEATHER, SEASON_TURN, COPED;
+
+    /**
+     * The payoff beats -- the steps of the climb worth dropping speed to witness at
+     * reading pace, even mid fast-forward (§10.4). Other significant events still get
+     * surfaced; these are the ones that also pull time back to a watchable pace.
+     */
+    val isPayoff: Boolean
+        get() = this == BIRTH || this == DEATH || this == GOAL_ACHIEVED || this == MILESTONE
 }
 
 /**

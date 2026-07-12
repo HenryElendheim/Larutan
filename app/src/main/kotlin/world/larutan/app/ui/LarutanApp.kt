@@ -25,10 +25,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import world.larutan.app.SimulationViewModel
+import world.larutan.app.ui.model.MomentView
 import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.RosterFilter
 import world.larutan.app.ui.model.TimelineMomentView
 import world.larutan.app.ui.model.UiState
+import world.larutan.app.ui.theme.Ember
 
 /**
  * The whole screen: the map up top, the clock, and — the point of it all — the
@@ -48,6 +50,9 @@ fun LarutanApp(vm: SimulationViewModel) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         WorldBar(state)
+        state.moment?.let {
+            MomentBanner(it, onOpen = vm::openMoment, onDismiss = vm::dismissMoment)
+        }
         WorldView(
             world = state.world,
             beings = state.beings,
@@ -207,6 +212,43 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 7.dp),
     )
+}
+
+@Composable
+private fun MomentBanner(moment: MomentView, onOpen: () -> Unit, onDismiss: () -> Unit) {
+    // Something worth seeing just happened. Tap it to go to whoever it happened to;
+    // dismiss to wave it away. It lingers until the next moment or you clear it.
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            Modifier
+                .weight(1f)
+                .clickable { onOpen() },
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                "A MOMENT",
+                style = MaterialTheme.typography.labelSmall,
+                color = Ember,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(moment.text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+        }
+        Text(
+            "Dismiss",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .clickable { onDismiss() }
+                .padding(start = 12.dp),
+        )
+    }
 }
 
 @Composable

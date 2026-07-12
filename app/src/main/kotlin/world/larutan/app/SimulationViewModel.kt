@@ -17,6 +17,7 @@ import world.larutan.app.ui.model.DriveBar
 import world.larutan.app.ui.model.FollowedBeing
 import world.larutan.app.ui.model.GoalView
 import world.larutan.app.ui.model.GodAction
+import world.larutan.app.ui.model.MomentView
 import world.larutan.app.ui.model.RelationView
 import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.RosterFilter
@@ -27,6 +28,7 @@ import world.larutan.app.ui.model.WorldInfo
 import world.larutan.engine.being.Being
 import world.larutan.engine.being.DriveType
 import world.larutan.engine.being.Sentiment
+import world.larutan.engine.event.WorldEvent
 import world.larutan.engine.god.God
 import world.larutan.engine.sim.Persistence
 import world.larutan.engine.sim.Simulation
@@ -51,6 +53,11 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
     // A rolling history of the world, so time can be rolled back (§10.5). Session-only.
     private val timeline = Timeline()
 
+    // Significant-moment surfacing (§10.4): how many significant events we've already
+    // shown, and the latest one still up on the banner.
+    private var seenSignificant = 0
+    private var currentMoment: WorldEvent? = null
+
     // The world survives being closed: continuity is the point.
     private val saveFile = File(app.filesDir, "world.json")
 
@@ -66,6 +73,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         sim = loadOrCreate()
         god = God(sim)
         timeline.record(sim) // the moment you arrive is the first you can return to
+        resetMomentTracking()
         publish()
     }
 
@@ -93,6 +101,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         followedId = 0
         timeline.clear()
         timeline.record(sim)
+        resetMomentTracking()
         save()
         publish()
     }
@@ -127,6 +136,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             withContext(Dispatchers.Default) { sim.step() }
             timeline.maybeRecord(sim)
+            surfaceMoments()
             publish()
         }
     }
@@ -138,8 +148,47 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         loop?.cancel()
         sim = Persistence.restore(Persistence.deserialize(json))
         god = God(sim)
+        resetMomentTracking() // the restored past shouldn't re-announce itself
         save()
         publish()
+    }
+
+    /** Tap a surfaced moment: follow whoever it happened to, and clear the banner. */
+    fun openMoment() {
+        currentMoment?.beingId?.let { followedId = it }
+        currentMoment = null
+        publish()
+    }
+
+    /** Wave a surfaced moment away without following it. */
+    fun dismissMoment() {
+        currentMoment = null
+        publish()
+    }
+
+    private fun resetMomentTracking() {
+        seenSignificant = sim.chronicle.entries.count { it.significant }
+        currentMoment = null
+    }
+
+    /**
+     * Surface anything meaningful that just happened (§10.4). New significant events
+     * go up on the banner; a payoff beat -- a birth, death, or a goal reached -- during
+     * a fast run also pulls time back to a watchable pace so you don't blur past it.
+     */
+    private fun surfaceMoments() {
+        val sig = sim.chronicle.entries.filter { it.significant }
+        when {
+            sig.size > seenSignificant -> {
+                val fresh = sig.subList(seenSignificant, sig.size)
+                seenSignificant = sig.size
+                currentMoment = fresh.last()
+                if (fresh.any { it.kind.isPayoff } && (speed == Speed.WATCH || speed == Speed.DRIFT)) {
+                    speed = Speed.REFLECT // the loop reads speed each turn, so it eases on its own
+                }
+            }
+            sig.size < seenSignificant -> seenSignificant = sig.size // chronicle trimmed; re-sync
+        }
     }
 
     /** Send the soul you're following back into a new life, and follow the newborn (§10.7). */
@@ -194,6 +243,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 if (sim.living().isEmpty()) break
                 withContext(Dispatchers.Default) { sim.step() }
                 timeline.maybeRecord(sim)
+                surfaceMoments()
                 publish()
                 delay(speed.tickDelayMillis)
             }
@@ -232,6 +282,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             realmFilter = realmFilter,
             followed = followed?.toFollowed(),
             speed = speed,
+            moment = currentMoment?.let { MomentView(text = it.text, beingId = it.beingId) },
             timeline = timeline.moments().map {
                 TimelineMomentView(tick = it.tick, label = it.label, isNow = it.tick == world.tick)
             },

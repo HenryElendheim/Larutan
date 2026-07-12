@@ -24,8 +24,15 @@ data class UiState(
     val realmFilter: String? = null, // null means every realm; otherwise a realm label
     val followed: FollowedBeing? = null,
     val speed: Speed = Speed.PAUSED,
+    val moment: MomentView? = null,
     val timeline: List<TimelineMomentView> = emptyList(),
     val chronicle: List<String> = emptyList(),
+)
+
+/** A meaningful thing that just happened, surfaced so you don't miss it (§10.4). */
+data class MomentView(
+    val text: String,
+    val beingId: Int?, // who it happened to, if anyone — tapping follows them
 )
 
 /** One moment you can roll the world back to. */
