@@ -36,6 +36,7 @@ import world.larutan.engine.sim.Simulation
 import world.larutan.engine.sim.Timeline
 import world.larutan.engine.sim.WorldConfig
 import world.larutan.engine.sim.WorldGen
+import world.larutan.engine.world.Season
 import world.larutan.engine.world.World
 import java.io.File
 
@@ -284,8 +285,21 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             followed = followed?.toFollowed(),
             speed = speed,
             moment = currentMoment?.let { MomentView(text = it.text, beingId = it.beingId) },
-            timeline = timeline.moments().map {
-                TimelineMomentView(tick = it.tick, label = it.label, isNow = it.tick == world.tick)
+            timeline = timeline.moments().map { m ->
+                val day = m.tick / World.TICKS_PER_DAY
+                val hour = (m.tick % World.TICKS_PER_DAY).toInt()
+                val seasonIdx = ((day / World.DAYS_PER_SEASON) % 4).toInt()
+                val dayOfSeason = (day % World.DAYS_PER_SEASON).toInt()
+                TimelineMomentView(
+                    tick = m.tick,
+                    year = day / (World.DAYS_PER_SEASON * 4),
+                    monthIndex = seasonIdx,
+                    monthLabel = Season.entries[seasonIdx].label,
+                    week = dayOfSeason / 4,
+                    dayOfSeason = dayOfSeason,
+                    timeLabel = timeOfDayLabel(hour),
+                    isNow = m.tick == world.tick,
+                )
             },
             chronicle = sim.chronicle.significant(8).map { it.text }.reversed(),
         )
@@ -377,6 +391,19 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 .map { DriveBar(it.label, skills[it].toFloat()) },
             beliefs = beliefs.sortedByDescending { it.strength }.take(5).map { it.statement },
         )
+    }
+
+    /** A friendly name for a snapshot's time of day, for the rewind picker's last level. */
+    private fun timeOfDayLabel(hour: Int): String {
+        val word = when (hour) {
+            in 5..6 -> "dawn"
+            in 7..10 -> "morning"
+            in 11..13 -> "midday"
+            in 14..17 -> "afternoon"
+            in 18..20 -> "dusk"
+            else -> "night"
+        }
+        return "$word · ${hour.toString().padStart(2, '0')}h"
     }
 
     private fun Sentiment.label(): String = when (this) {

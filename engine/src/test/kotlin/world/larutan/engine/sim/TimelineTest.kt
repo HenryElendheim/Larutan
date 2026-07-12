@@ -17,7 +17,7 @@ class TimelineTest {
     @Test
     fun rewindRestoresTheWorldAsItWas() {
         val sim = freshSim()
-        val timeline = Timeline(cadenceTicks = 1, maxPoints = 200)
+        val timeline = Timeline(recentCadence = 1, recentCap = 300)
         repeat(40) { timeline.maybeRecord(sim); sim.step() } // records ticks 0..39
         timeline.maybeRecord(sim)                            // ...and tick 40
 
@@ -38,7 +38,7 @@ class TimelineTest {
     @Test
     fun replayingFromARewindIsDeterministic() {
         val sim = freshSim(seed = 8L)
-        val timeline = Timeline(cadenceTicks = 1, maxPoints = 200)
+        val timeline = Timeline(recentCadence = 1, recentCap = 300)
         repeat(25) { timeline.maybeRecord(sim); sim.step() }
         val json = timeline.rewindTo(10)!!
 

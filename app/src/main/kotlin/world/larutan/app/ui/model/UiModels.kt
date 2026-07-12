@@ -35,11 +35,19 @@ data class MomentView(
     val beingId: Int?, // who it happened to, if anyone — tapping follows them
 )
 
-/** One moment you can roll the world back to. */
+/**
+ * One moment you can roll the world back to, broken down so the rewind picker can
+ * drill from years, to months (seasons), to weeks, to days, to the time of day.
+ */
 data class TimelineMomentView(
     val tick: Long,
-    val label: String,
-    val isNow: Boolean, // the moment the world is sitting at right now
+    val year: Long,
+    val monthIndex: Int,    // which season, 0..3
+    val monthLabel: String, // spring / summer / autumn / winter
+    val week: Int,          // which week within the season, 0..2
+    val dayOfSeason: Int,   // 0..11
+    val timeLabel: String,  // the time of day, e.g. "morning · 08h"
+    val isNow: Boolean,     // the moment the world is sitting at right now
 )
 
 /** One row in the who-to-follow picker. */

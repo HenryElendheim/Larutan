@@ -18,6 +18,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -253,30 +256,86 @@ private fun MomentBanner(moment: MomentView, onOpen: () -> Unit, onDismiss: () -
 
 @Composable
 private fun TimelineStrip(moments: List<TimelineMomentView>, onRewind: (Long) -> Unit) {
-    // Reverse time: tap a moment to roll the whole world back to it. The moment the
-    // world is sitting at now is highlighted; anything after a rewind is let go.
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            "REWIND",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Medium,
-        )
+    // Reverse time by drilling in: pick a year, then a month, a week, a day, and
+    // finally a time of day -> then the world rolls back to exactly that moment.
+    // Each level narrows the ones below it.
+    var year by remember { mutableStateOf<Long?>(null) }
+    var month by remember { mutableStateOf<Int?>(null) }
+    var week by remember { mutableStateOf<Int?>(null) }
+    var day by remember { mutableStateOf<Int?>(null) }
+
+    fun back() {
+        when {
+            day != null -> day = null
+            week != null -> week = null
+            month != null -> month = null
+            year != null -> year = null
+        }
+    }
+
+    val here = moments.filter {
+        (year == null || it.year == year) &&
+            (month == null || it.monthIndex == month) &&
+            (week == null || it.week == week) &&
+            (day == null || it.dayOfSeason == day)
+    }
+
+    val crumbs = buildList {
+        if (year != null) add("Year $year")
+        if (month != null) add(here.firstOrNull()?.monthLabel?.replaceFirstChar { it.uppercase() } ?: "")
+        if (week != null) add("Week ${week!! + 1}")
+        if (day != null) add("Day ${day!! + 1}")
+    }
+    val heading = when {
+        day != null -> "choose a time"
+        week != null -> "choose a day"
+        month != null -> "choose a week"
+        year != null -> "choose a month"
+        else -> "choose a year"
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                "REWIND",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+            )
+            if (year != null) Chip(label = "Back", selected = false) { back() }
+            Text(
+                if (crumbs.isEmpty()) heading else crumbs.joinToString(" · ") + " · $heading",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            moments.forEach { m ->
-                Text(
-                    m.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (m.isNow) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (m.isNow) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                        .clickable { onRewind(m.tick) }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                )
+            when {
+                year == null -> here.map { it.year }.distinct().sorted().forEach { y ->
+                    Chip(label = "Year $y", selected = false) { year = y }
+                }
+                month == null -> here.distinctBy { it.monthIndex }.sortedBy { it.monthIndex }.forEach { m ->
+                    Chip(label = m.monthLabel.replaceFirstChar { it.uppercase() }, selected = false) { month = m.monthIndex }
+                }
+                week == null -> here.map { it.week }.distinct().sorted().forEach { w ->
+                    Chip(label = "Week ${w + 1}", selected = false) { week = w }
+                }
+                day == null -> here.map { it.dayOfSeason }.distinct().sorted().forEach { d ->
+                    Chip(label = "Day ${d + 1}", selected = false) { day = d }
+                }
+                else -> here.sortedBy { it.tick }.forEach { m ->
+                    // The last level: pick the time of day, and time reverses to it.
+                    Chip(label = m.timeLabel, selected = m.isNow) {
+                        onRewind(m.tick)
+                        year = null; month = null; week = null; day = null
+                    }
+                }
             }
         }
     }
