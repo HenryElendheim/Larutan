@@ -1,0 +1,47 @@
+# Publishes an APK that a previous build already produced, instead of building
+# again. The shared runners are inconsistent enough that a rebuild can crawl for
+# half an hour; when a good APK already exists as an artifact, this just attaches
+# it to the release in seconds. Point it at the run that built the artifact.
+name: Publish prebuilt APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run id that produced the larutan-release-apk artifact"
+        required: true
+      version:
+        description: "Version tag to create and publish (e.g. v0.1.1)"
+        default: "v0.1.1"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Fetch the prebuilt APK
+        uses: actions/download-artifact@v4
+        with:
+          name: larutan-release-apk
+          path: apk
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Gather the release notes
+        run: awk '/^## /{c++} c==1{print} c==2{exit}' RELEASES.md > notes.md
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Larutan ${{ inputs.version }}
+          body_path: notes.md
+          files: apk/app-release.apk
+          fail_on_unmatched_files: true
