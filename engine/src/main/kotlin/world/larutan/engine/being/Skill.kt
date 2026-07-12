@@ -9,6 +9,7 @@ enum class SkillType(val label: String) {
     BUILDING("building"),
     CAREGIVING("caregiving"),
     CULTIVATION("cultivation"),
+    HUNTING("hunting"),
 }
 
 /**

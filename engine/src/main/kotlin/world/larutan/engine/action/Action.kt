@@ -11,6 +11,7 @@ enum class ActionType(val label: String, val reliefs: Map<DriveType, Double>) {
     EAT("eating", mapOf(DriveType.HUNGER to 42.0)),
     DRINK("drinking", mapOf(DriveType.THIRST to 46.0)),
     FORAGE("foraging", mapOf(DriveType.HUNGER to 14.0)),
+    HUNT("hunting", mapOf(DriveType.HUNGER to 22.0)),
     REST("resting", mapOf(DriveType.ENERGY to 40.0)),
     SEEK_WARMTH("seeking warmth", mapOf(DriveType.WARMTH to 36.0, DriveType.SECURITY to 6.0)),
     SOCIALIZE("with another", mapOf(DriveType.CONNECTION to 30.0, DriveType.INTIMACY to 14.0)),

@@ -214,6 +214,7 @@ class Simulation(
             ActionType.BUILD -> 1.0 + p.industry * 0.6
             ActionType.TEND -> 1.0 + p.industry * 0.5 + p.curiosity * 0.2
             ActionType.FORAGE -> 1.0 + p.industry * 0.4
+            ActionType.HUNT -> 1.0 + p.boldness * 0.6 // the bold hunt; the cautious forage
             ActionType.REFLECT -> 1.0 + (if (b.lifeStage.label == "elder") 0.6 else 0.0) - p.industry * 0.2
             ActionType.SEEK_WARMTH -> 1.0 + p.resilience.let { if (it < 0) 0.3 else 0.0 }
             else -> 1.0
@@ -230,6 +231,8 @@ class Simulation(
         ActionType.BUILD -> if (nearestMaterials(b) != null) 1.0 else 0.1
         // Only a being who's learned to cultivate reaches for it -> otherwise near-zero.
         ActionType.TEND -> if (b.skills[SkillType.CULTIVATION] > 0.0 && nearestGrowable(b) != null) 1.1 else 0.02
+        // Hunting is grown-up, dangerous work; the young don't take it on.
+        ActionType.HUNT -> if (b.lifeStage.label == "infant" || b.lifeStage.label == "child") 0.03 else 1.0
         else -> 1.0
     }
 
@@ -282,6 +285,7 @@ class Simulation(
                     record(b, MemoryKind.FORAGED, "foraging the ${t.terrain.label}", 0.15, 0.1)
                 }
             }
+            ActionType.HUNT -> hunt(b)
             ActionType.DRINK -> {
                 val tile = nearestWater(b)
                 if (tile != null && stepToward(b, tile.first, tile.second)) {
@@ -463,6 +467,35 @@ class Simulation(
     private fun nearestGrowable(b: Being): Pair<Int, Int>? = nearestTile(b) { it.foodCapacity > 0.0 }
 
     /**
+     * Hunt game: the riskier, higher-yield way to eat (§3.5). Skill and boldness make a
+     * catch more likely and larger; a miss can turn bad and leave a real wound, which is
+     * one of the honest ways a life comes apart. Not everyone takes it up -- the cautious
+     * stick to foraging. Learned by doing, and taught on like any other skill.
+     */
+    internal fun hunt(b: Being): Boolean {
+        stepOutward(b) // range after game
+        val skill = b.skills[SkillType.HUNTING]
+        b.skills.practice(SkillType.HUNTING, 0.01)
+        val prowess = (0.3 + skill * 0.45 + b.personality.boldness * 0.15).coerceIn(0.1, 0.9)
+        if (rng.chance(prowess)) {
+            val caught = 30.0 + skill * 24.0 // far more than a forage, when it lands
+            b.drives.change(DriveType.HUNGER, caught * 0.9)
+            b.foodStore += caught * 0.7
+            b.hold(BeliefKind.HARD_WORK_PROVIDES, 0.02, "a hunt that fed them")
+            record(b, MemoryKind.FORAGED, "brought down game", 0.35, 0.45)
+            return true
+        }
+        // A miss, and now and then a bad turn -> a wound. Skill and nerve keep you safer.
+        val hurtChance = (0.2 - skill * 0.14 - b.personality.boldness * 0.05).coerceIn(0.03, 0.25)
+        if (rng.chance(hurtChance)) {
+            b.drives.change(DriveType.HEALTH, -14.0)
+            b.emotion.feel(EmotionName.FEAR, 0.3)
+            record(b, MemoryKind.HURT, "hurt in a hunt gone wrong", 0.6, -0.6)
+        }
+        return false
+    }
+
+    /**
      * An elder near a child hands down what they know: a nudge toward their skill, and
      * a fainter version of their firmest conviction. Passed on weaker and imperfect,
      * a belief drifts as it travels a lineage -> the seed of shared story and myth (§9).
@@ -477,6 +510,7 @@ class Simulation(
         student.skills.learnFrom(teacher.skills[SkillType.BUILDING], SkillType.BUILDING)
         // Cultivation, once someone hits on it, travels down the generations by being shown.
         student.skills.learnFrom(teacher.skills[SkillType.CULTIVATION], SkillType.CULTIVATION)
+        student.skills.learnFrom(teacher.skills[SkillType.HUNTING], SkillType.HUNTING)
 
         val belief = teacher.beliefs.maxByOrNull { it.strength } ?: return
         val isNew = student.beliefs.none { it.kind == belief.kind }
