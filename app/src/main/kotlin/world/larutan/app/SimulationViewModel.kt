@@ -142,6 +142,17 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         publish()
     }
 
+    /** Send the soul you're following back into a new life, and follow the newborn (§10.7). */
+    fun reincarnateFollowed() {
+        val newId = god.reincarnate(followedId) ?: return
+        followedId = newId
+        rosterFilter = RosterFilter.LIVING // the story is with the living again
+        realmFilter = null
+        timeline.maybeRecord(sim)
+        save()
+        publish()
+    }
+
     /** Reach in and touch the being you're following. */
     fun invoke(action: GodAction) {
         val id = followedId
@@ -234,7 +245,8 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             RosterFilter.LIVING -> sim.beings.filter { it.alive }
                 .sortedWith(compareByDescending<Being> { it.generation }.thenBy { it.name })
             RosterFilter.DEAD -> sim.beings
-                .filter { !it.alive && (realmFilter == null || it.realm?.label == realmFilter) }
+                // Souls that have been reborn have moved on -> they leave the afterlife.
+                .filter { !it.alive && !it.reincarnated && (realmFilter == null || it.realm?.label == realmFilter) }
                 .sortedByDescending { it.id } // most-recently born-and-lost first
         }
         return pool.map { b ->
@@ -280,6 +292,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             realm = realm?.label,
             deathCause = deathCause,
             finalThought = finalThought,
+            epitaph = epitaph,
             valence = emotion.valence.toFloat(),
             emotions = emotion.active.sortedByDescending { it.intensity }.take(4).map { it.name.label },
             drives = driveOrder.map { DriveBar(it.label, (drives[it] / 100f).toFloat()) },

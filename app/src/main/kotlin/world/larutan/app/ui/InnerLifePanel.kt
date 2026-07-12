@@ -43,6 +43,7 @@ import world.larutan.app.ui.theme.Tide
 fun InnerLifePanel(
     being: FollowedBeing,
     onGod: (GodAction) -> Unit,
+    onReincarnate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -59,6 +60,8 @@ fun InnerLifePanel(
             if (being.memories.isNotEmpty()) Memories(being.memories)
         } else {
             // A soul at rest: no drives to tend, but a last word and the thoughts they carried.
+            DeadActions(onReincarnate)
+            being.epitaph?.let { Utterance(label = "Remembered as", text = it, dream = true) }
             being.finalThought?.let { Utterance(label = "Final thought", text = it) }
             if (being.pastThoughts.isNotEmpty()) PastThoughts(being.pastThoughts)
             if (being.relationships.isNotEmpty()) Relationships(being.relationships)
@@ -119,6 +122,26 @@ private fun GodTouch(onGod: (GodAction) -> Unit, immortal: Boolean) {
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun DeadActions(onReincarnate: () -> Unit) {
+    // The one reach-in that still means something to the dead: send them into a new life.
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            "Reincarnate",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .clickable { onReincarnate() }
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        )
     }
 }
 

@@ -63,6 +63,9 @@ class Being(
     var realm: Realm? = null,            // where the soul settled; null while alive
     var moralLedger: Double = 0.0,       // a quiet weighing of the life, which sets the realm at death
     var finalThought: String? = null,    // the last reflection, left behind for others to find
+    var deathTick: Long? = null,         // when they died, so the memory of them can fade with time
+    var epitaph: String? = null,         // what the long-gone become: a name and a line
+    var reincarnated: Boolean = false,   // once reborn, the soul has moved on from the afterlife
     var lastThought: String? = null,
     val recentThoughts: MutableList<String> = mutableListOf(),
     var lastDream: String? = null,

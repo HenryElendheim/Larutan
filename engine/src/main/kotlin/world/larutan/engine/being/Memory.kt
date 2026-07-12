@@ -54,6 +54,13 @@ class MemoryLog(val events: MutableList<MemoryEvent> = mutableListOf()) {
     fun salient(limit: Int = 5): List<MemoryEvent> =
         events.sortedByDescending { it.salience * 0.6 + it.emotionalWeight * 0.4 }.take(limit)
 
+    /** Keep only the most present memories, letting the rest go. This is how the dead fade to legend (§10.7). */
+    fun compressTo(limit: Int) {
+        if (events.size <= limit) return
+        val keep = salient(limit).toHashSet()
+        events.retainAll { it in keep }
+    }
+
     fun involving(otherId: Int, limit: Int = 4): List<MemoryEvent> =
         events.filter { it.subjectId == otherId }
             .sortedByDescending { it.salience + it.emotionalWeight }

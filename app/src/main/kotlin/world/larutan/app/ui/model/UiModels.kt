@@ -92,6 +92,7 @@ data class FollowedBeing(
     val realm: String?,        // set once they've died
     val deathCause: String?,
     val finalThought: String?, // their last reflection
+    val epitaph: String?,      // what the long-gone become: a name and a line
     val valence: Float,
     val emotions: List<String>,
     val drives: List<DriveBar>,

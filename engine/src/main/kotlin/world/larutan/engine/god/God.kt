@@ -130,6 +130,17 @@ class God(private val sim: Simulation) {
         alive(id)?.let { it.immortal = false; log("Time found ${it.name} again.", it.id) }
     }
 
+    // ---- the afterlife ------------------------------------------------------
+
+    /**
+     * Send a soul back into a new life (§10.7). Returns the newborn's id, or null if
+     * that being is still living or has already been reborn.
+     */
+    fun reincarnate(id: Int): Int? {
+        val soul = sim.byId(id)?.takeIf { !it.alive && !it.reincarnated } ?: return null
+        return sim.reincarnate(soul).id
+    }
+
     // ---- bonds --------------------------------------------------------------
 
     fun mendBond(aId: Int, bId: Int, amount: Double = 25.0) {

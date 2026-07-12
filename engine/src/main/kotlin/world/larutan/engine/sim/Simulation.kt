@@ -498,6 +498,7 @@ class Simulation(
     private fun die(b: Being, cause: String) {
         b.alive = false
         b.deathCause = cause
+        b.deathTick = world.tick
         b.currentAction = "gone"
         // A soul leaves a last reflection, is weighed, and settles into a realm (§10.7).
         b.finalThought = finalThoughtFor(b)
@@ -611,6 +612,69 @@ class Simulation(
             // A store slowly spoils, so "provide" is a standing effort, not a one-off.
             b.foodStore = (b.foodStore * 0.98)
         }
+        fadeTheDead()
+    }
+
+    /**
+     * The dead don't drown the world in data (§10.7): as world-time passes, older souls
+     * compress -> the sharp memory dulls, then a short epitaph forms, until the long-gone
+     * are little more than a name and a line. This is exactly how memory works for us.
+     */
+    private fun fadeTheDead() {
+        val year = World.DAYS_PER_SEASON * 4 * World.TICKS_PER_DAY
+        val season = World.DAYS_PER_SEASON * World.TICKS_PER_DAY
+        for (b in beings) {
+            if (b.alive || b.reincarnated) continue
+            val since = world.tick - (b.deathTick ?: continue)
+            when {
+                since > year -> {
+                    if (b.epitaph == null) b.epitaph = epitaphFor(b)
+                    b.memory.compressTo(1)
+                }
+                since > 2 * season -> {
+                    if (b.epitaph == null) b.epitaph = epitaphFor(b)
+                    b.memory.compressTo(3)
+                }
+                since > season -> b.memory.compressTo(8)
+            }
+        }
+    }
+
+    /** A one-line remembrance for a soul long gone: what the life is remembered for. */
+    private fun epitaphFor(b: Being): String {
+        val note = b.goal?.takeIf { it.status == GoalStatus.ACHIEVED }?.target
+            ?: b.memory.events.filter { it.valenceAtTime > 0 }.maxByOrNull { it.emotionalWeight }?.detail
+        return if (note != null) "${b.name} — ${note}" else "${b.name} — a life, now a name"
+    }
+
+    /**
+     * Reincarnation (§10.7): a soul returns to the living world as a newborn, carrying a
+     * trace of who it was -> a look, a temperament near the old one, and a faint pull it
+     * can't name. The old soul has moved on, so it leaves the afterlife.
+     */
+    fun reincarnate(soul: Being): Being {
+        val child = Being(
+            id = nextId++,
+            name = Names.random(rng),
+            x = soul.x.coerceIn(0, world.width - 1),
+            y = soul.y.coerceIn(0, world.height - 1),
+            personality = Personality.inherit(soul.personality, soul.personality, rng, 0.2),
+            generation = 1,
+            ageYears = 0.0,
+            birthTick = world.tick,
+            appearanceSeed = soul.appearanceSeed, // an echo of the old look
+        )
+        child.memory.record(
+            MemoryEvent(
+                world.tick, MemoryKind.REFLECTED,
+                "a pull toward something from before, with no name for it",
+                subjectId = null, emotionalWeight = 0.5, valenceAtTime = 0.1, salience = 0.6,
+            ),
+        )
+        soul.reincarnated = true
+        beings += child
+        chronicle.add(WorldEvent(world.tick, EventKind.BIRTH, "${soul.name} was reborn as ${child.name}.", child.id, significant = true))
+        return child
     }
 
     // ---- perception helpers -------------------------------------------------
