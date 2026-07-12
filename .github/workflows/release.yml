@@ -15,6 +15,7 @@ permissions:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 25   # a build shouldn't take this long -> fail fast if it hangs
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
