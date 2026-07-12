@@ -7,7 +7,12 @@ on:
   push:
     branches: [testing]   # build-check every push to testing
     tags: ["v*"]          # a version tag also publishes the release
-  workflow_dispatch:      # and it can be run by hand
+  workflow_dispatch:      # or publish by hand, naming the version to cut
+    inputs:
+      version:
+        description: "Version tag to create and publish (e.g. v0.1.1)"
+        default: "v0.1.1"
+        required: true
 
 permissions:
   contents: write         # needed to create the release and upload the APK
@@ -50,14 +55,16 @@ jobs:
 
       # Pull just the top (newest) section out of RELEASES.md for the release body.
       - name: Gather the release notes
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         run: awk '/^## /{c++} c==1{print} c==2{exit}' RELEASES.md > notes.md
 
       - name: Publish the release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          name: Larutan ${{ github.ref_name }}
+          # On a tag push the tag names itself; a manual run names the version to cut.
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          name: Larutan ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           body_path: notes.md
           files: app/build/outputs/apk/release/app-release.apk
           fail_on_unmatched_files: true
