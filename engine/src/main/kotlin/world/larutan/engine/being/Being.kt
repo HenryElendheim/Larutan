@@ -59,6 +59,10 @@ class Being(
     var currentAction: String = "waking",
     var foodStore: Double = 0.0,
     var deathCause: String? = null,
+    // --- the afterlife (§10.7) ---
+    var realm: Realm? = null,            // where the soul settled; null while alive
+    var moralLedger: Double = 0.0,       // a quiet weighing of the life, which sets the realm at death
+    var finalThought: String? = null,    // the last reflection, left behind for others to find
     var lastThought: String? = null,
     val recentThoughts: MutableList<String> = mutableListOf(),
     var lastDream: String? = null,

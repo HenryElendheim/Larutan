@@ -19,6 +19,7 @@ import world.larutan.app.ui.model.GoalView
 import world.larutan.app.ui.model.GodAction
 import world.larutan.app.ui.model.RelationView
 import world.larutan.app.ui.model.RosterEntry
+import world.larutan.app.ui.model.RosterFilter
 import world.larutan.app.ui.model.Speed
 import world.larutan.app.ui.model.UiState
 import world.larutan.app.ui.model.WorldInfo
@@ -53,6 +54,8 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
 
     private var speed: Speed = Speed.PAUSED
     private var followedId: Int = 0
+    private var rosterFilter: RosterFilter = RosterFilter.LIVING
+    private var realmFilter: String? = null // null shows every realm; a label narrows to one
 
     init {
         sim = loadOrCreate()
@@ -97,6 +100,19 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         publish()
     }
 
+    /** Switch the roster between the living and the dead. */
+    fun setRosterFilter(filter: RosterFilter) {
+        rosterFilter = filter
+        if (filter == RosterFilter.LIVING) realmFilter = null
+        publish()
+    }
+
+    /** Among the dead, narrow to one realm (or pass null for all of them). */
+    fun setRealmFilter(realm: String?) {
+        realmFilter = realm
+        publish()
+    }
+
     /** Advance exactly one hour, for close observation. */
     fun stepOnce() {
         if (sim.living().isEmpty()) return
@@ -114,7 +130,9 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             GodAction.WARM -> god.warm(id)
             GodAction.BLESS -> god.bless(id)
             GodAction.INSPIRE -> god.inspire(id)
-            GodAction.IMMORTALITY -> god.grantImmortality(id)
+            // Agelessness is a toggle now: grant it, or take it back if it's already on.
+            GodAction.IMMORTALITY ->
+                if (sim.byId(id)?.immortal == true) god.revokeImmortality(id) else god.grantImmortality(id)
         }
         publish()
     }
@@ -159,7 +177,8 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun publish() {
         val world = sim.world
-        val followed = sim.byId(followedId)?.takeIf { it.alive } ?: sim.living().firstOrNull()
+        // You may follow the dead too, so don't force the followed one to be alive.
+        val followed = sim.byId(followedId) ?: sim.living().firstOrNull()
         if (followed != null) followedId = followed.id
 
         _state.value = UiState(
@@ -176,21 +195,34 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 population = sim.living().size,
             ),
             beings = sim.beings.map { it.toDot(followed?.id) },
-            roster = sim.beings
-                .sortedWith(compareByDescending<Being> { it.alive }.thenByDescending { it.generation })
-                .map { b ->
-                    RosterEntry(
-                        id = b.id,
-                        name = b.name,
-                        alive = b.alive,
-                        selected = b.id == followed?.id,
-                        note = if (b.alive) b.lifeStage.label else "lost to ${b.deathCause ?: "the world"}",
-                    )
-                },
+            roster = buildRoster(followed?.id),
+            rosterFilter = rosterFilter,
+            realmFilter = realmFilter,
             followed = followed?.toFollowed(),
             speed = speed,
             chronicle = sim.chronicle.significant(8).map { it.text }.reversed(),
         )
+    }
+
+    /** Build the who-to-follow list for the current filter: the living, or the dead by realm. */
+    private fun buildRoster(selectedId: Int?): List<RosterEntry> {
+        val pool = when (rosterFilter) {
+            RosterFilter.LIVING -> sim.beings.filter { it.alive }
+                .sortedWith(compareByDescending<Being> { it.generation }.thenBy { it.name })
+            RosterFilter.DEAD -> sim.beings
+                .filter { !it.alive && (realmFilter == null || it.realm?.label == realmFilter) }
+                .sortedByDescending { it.id } // most-recently born-and-lost first
+        }
+        return pool.map { b ->
+            RosterEntry(
+                id = b.id,
+                name = b.name,
+                alive = b.alive,
+                selected = b.id == selectedId,
+                note = if (b.alive) b.lifeStage.label else "lost to ${b.deathCause ?: "the world"}",
+                realm = b.realm?.label,
+            )
+        }
     }
 
     private fun Being.toDot(selectedId: Int?): BeingDot = BeingDot(
@@ -201,6 +233,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         valence = emotion.valence.toFloat(),
         alive = alive,
         selected = id == selectedId,
+        immortal = immortal,
     )
 
     private fun Being.toFollowed(): FollowedBeing {
@@ -218,6 +251,11 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             action = currentAction,
             mood = emotion.moodLabel(),
             atypical = personality.isAtypical,
+            alive = alive,
+            immortal = immortal,
+            realm = realm?.label,
+            deathCause = deathCause,
+            finalThought = finalThought,
             valence = emotion.valence.toFloat(),
             emotions = emotion.active.sortedByDescending { it.intensity }.take(4).map { it.name.label },
             drives = driveOrder.map { DriveBar(it.label, (drives[it] / 100f).toFloat()) },
@@ -231,6 +269,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             },
             lastThought = lastThought,
             lastDream = lastDream,
+            pastThoughts = recentThoughts.asReversed().take(8),
             memories = memory.salient(6).map { it.detail },
             relationships = relationships.values
                 .filter { it.bond > 5 && sim.byId(it.otherId) != null }

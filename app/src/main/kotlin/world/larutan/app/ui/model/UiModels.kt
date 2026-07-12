@@ -4,15 +4,24 @@ package world.larutan.app.ui.model
 
 enum class Speed(val label: String, val tickDelayMillis: Long) {
     PAUSED("Paused", Long.MAX_VALUE),
+    DWELL("Dwell", 3200),      // slower than slow — linger on a single moment
     REFLECT("Reflect", 1400),  // the intimate baseline — sit with one life
     WATCH("Watch", 380),       // follow arcs across days
     DRIFT("Drift", 80);        // let a long stretch of life run
+}
+
+/** Whether the roster shows the living or the dead, and — for the dead — which realm. */
+enum class RosterFilter(val label: String) {
+    LIVING("Living"),
+    DEAD("The dead"),
 }
 
 data class UiState(
     val world: WorldInfo = WorldInfo(),
     val beings: List<BeingDot> = emptyList(),
     val roster: List<RosterEntry> = emptyList(),
+    val rosterFilter: RosterFilter = RosterFilter.LIVING,
+    val realmFilter: String? = null, // null means every realm; otherwise a realm label
     val followed: FollowedBeing? = null,
     val speed: Speed = Speed.PAUSED,
     val chronicle: List<String> = emptyList(),
@@ -24,7 +33,8 @@ data class RosterEntry(
     val name: String,
     val alive: Boolean,
     val selected: Boolean,
-    val note: String, // life stage, or how they died
+    val note: String,     // life stage, or how they died
+    val realm: String? = null, // where the soul settled, for the dead
 )
 
 /** The powers you can reach in with, aimed at the being you're following. */
@@ -33,7 +43,7 @@ enum class GodAction(val label: String) {
     WARM("Warm"),
     BLESS("Bless"),
     INSPIRE("Inspire"),
-    IMMORTALITY("Make ageless"),
+    IMMORTALITY("Make ageless"), // a toggle: grants agelessness, or takes it back
 }
 
 data class WorldInfo(
@@ -57,6 +67,7 @@ data class BeingDot(
     val valence: Float,
     val alive: Boolean,
     val selected: Boolean,
+    val immortal: Boolean = false, // drawn with a ring so the ageless read at a glance
 )
 
 data class FollowedBeing(
@@ -68,12 +79,18 @@ data class FollowedBeing(
     val action: String,
     val mood: String,
     val atypical: Boolean,
+    val alive: Boolean,
+    val immortal: Boolean,
+    val realm: String?,        // set once they've died
+    val deathCause: String?,
+    val finalThought: String?, // their last reflection
     val valence: Float,
     val emotions: List<String>,
     val drives: List<DriveBar>,
     val goal: GoalView?,
     val lastThought: String?,
     val lastDream: String?,
+    val pastThoughts: List<String>, // the thoughts they carried, readable after they're gone
     val memories: List<String>,
     val relationships: List<RelationView>,
 )

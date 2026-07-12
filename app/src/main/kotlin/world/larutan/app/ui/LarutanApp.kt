@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import world.larutan.app.SimulationViewModel
+import world.larutan.app.ui.model.RosterEntry
+import world.larutan.app.ui.model.RosterFilter
 import world.larutan.app.ui.model.UiState
 
 /**
@@ -56,8 +58,20 @@ fun LarutanApp(vm: SimulationViewModel) {
             onStep = vm::stepOnce,
         )
 
+        RosterControls(
+            filter = state.rosterFilter,
+            realmFilter = state.realmFilter,
+            onFilter = vm::setRosterFilter,
+            onRealm = vm::setRealmFilter,
+        )
         if (state.roster.isNotEmpty()) {
             Roster(state.roster, onSelect = vm::follow)
+        } else {
+            Text(
+                if (state.rosterFilter == RosterFilter.DEAD) "None have passed here yet." else "No one is living.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Spacer(Modifier.height(2.dp))
@@ -112,8 +126,37 @@ private fun WorldBar(state: UiState) {
 }
 
 @Composable
-private fun Roster(entries: List<world.larutan.app.ui.model.RosterEntry>, onSelect: (Int) -> Unit) {
-    // Pick whom to follow. The living come first; the lost stay listed, dimmed.
+private fun RosterControls(
+    filter: RosterFilter,
+    realmFilter: String?,
+    onFilter: (RosterFilter) -> Unit,
+    onRealm: (String?) -> Unit,
+) {
+    // Choose the crowd: the living, or the dead — and when it's the dead, which realm.
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            RosterFilter.entries.forEach { f ->
+                Chip(label = f.label, selected = f == filter) { onFilter(f) }
+            }
+        }
+        if (filter == RosterFilter.DEAD) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Chip(label = "All", selected = realmFilter == null) { onRealm(null) }
+                // Realm labels must match what the engine writes on a soul.
+                listOf("Heaven", "Purgatory", "Hell").forEach { realm ->
+                    Chip(label = realm, selected = realmFilter == realm) { onRealm(realm) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Roster(entries: List<RosterEntry>, onSelect: (Int) -> Unit) {
+    // Pick whom to follow -> you can follow the dead too, so every card is selectable.
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -124,7 +167,7 @@ private fun Roster(entries: List<world.larutan.app.ui.model.RosterEntry>, onSele
                 Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                    .clickable(enabled = e.alive) { onSelect(e.id) }
+                    .clickable { onSelect(e.id) }
                     .padding(horizontal = 12.dp, vertical = 7.dp),
             ) {
                 Text(
@@ -137,13 +180,28 @@ private fun Roster(entries: List<world.larutan.app.ui.model.RosterEntry>, onSele
                     },
                 )
                 Text(
-                    e.note,
+                    // For the dead, name the realm they settled in alongside how they were lost.
+                    if (e.realm != null) "${e.note} · ${e.realm}" else e.note,
                     style = MaterialTheme.typography.labelSmall,
                     color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
     }
+}
+
+@Composable
+private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        style = MaterialTheme.typography.labelLarge,
+        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+    )
 }
 
 @Composable

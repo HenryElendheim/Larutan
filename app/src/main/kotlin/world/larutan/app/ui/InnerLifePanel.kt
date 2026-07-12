@@ -47,14 +47,23 @@ fun InnerLifePanel(
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Header(being)
-        GodTouch(onGod)
-        if (being.emotions.isNotEmpty()) Emotions(being.emotions)
-        being.lastThought?.let { Utterance(label = "Thinking", text = it) }
-        being.goal?.let { Goal(it) }
-        Drives(being.drives)
-        being.lastDream?.let { Utterance(label = "Last night's dream", text = it, dream = true) }
-        if (being.relationships.isNotEmpty()) Relationships(being.relationships)
-        if (being.memories.isNotEmpty()) Memories(being.memories)
+        if (being.alive) {
+            // A living being: the full inner life, and the powers to reach into it.
+            GodTouch(onGod, immortal = being.immortal)
+            if (being.emotions.isNotEmpty()) Emotions(being.emotions)
+            being.lastThought?.let { Utterance(label = "Thinking", text = it) }
+            being.goal?.let { Goal(it) }
+            Drives(being.drives)
+            being.lastDream?.let { Utterance(label = "Last night's dream", text = it, dream = true) }
+            if (being.relationships.isNotEmpty()) Relationships(being.relationships)
+            if (being.memories.isNotEmpty()) Memories(being.memories)
+        } else {
+            // A soul at rest: no drives to tend, but a last word and the thoughts they carried.
+            being.finalThought?.let { Utterance(label = "Final thought", text = it) }
+            if (being.pastThoughts.isNotEmpty()) PastThoughts(being.pastThoughts)
+            if (being.relationships.isNotEmpty()) Relationships(being.relationships)
+            if (being.memories.isNotEmpty()) Memories(being.memories)
+        }
     }
 }
 
@@ -64,20 +73,22 @@ private fun Header(b: FollowedBeing) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(b.name, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground)
             if (b.atypical) {
-                Text(
-                    "  a mind apart",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Tide,
-                )
+                Text("  a mind apart", style = MaterialTheme.typography.labelSmall, color = Tide)
+            }
+            // A plain, always-visible mark of agelessness, so you can tell at a glance.
+            if (b.immortal) {
+                Text("  ageless", style = MaterialTheme.typography.labelSmall, color = Ember)
             }
         }
         Text(
-            "generation ${b.generation} · ${b.lifeStage} · ${b.ageYears} years",
+            if (b.alive) "generation ${b.generation} · ${b.lifeStage} · ${b.ageYears} years"
+            else "generation ${b.generation} · gone to ${b.deathCause ?: "the world"}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            "${b.mood.replaceFirstChar { it.uppercase() }} — ${b.action}",
+            if (b.alive) "${b.mood.replaceFirstChar { it.uppercase() }} — ${b.action}"
+            else "At rest in ${b.realm ?: "the world"} — ${b.mood}",
             style = MaterialTheme.typography.titleMedium,
             color = moodColor(b.valence),
         )
@@ -85,22 +96,49 @@ private fun Header(b: FollowedBeing) {
 }
 
 @Composable
-private fun GodTouch(onGod: (GodAction) -> Unit) {
+private fun GodTouch(onGod: (GodAction) -> Unit, immortal: Boolean) {
     // Reach in. Powerful and free -- the being's own systems metabolise what you do.
+    // The agelessness power is a toggle, and it shows whether it's on or off.
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         GodAction.entries.forEach { action ->
+            val isAgeless = action == GodAction.IMMORTALITY
+            val on = isAgeless && immortal
+            val label = if (isAgeless) (if (immortal) "Ageless: on" else "Ageless: off") else action.label
             Text(
-                action.label,
+                label,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                // A filled, highlighted chip means the toggle is on; hollow means off.
+                color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
                     .clickable { onGod(action) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PastThoughts(thoughts: List<String>) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SectionLabel("What they were thinking")
+        thoughts.forEach { t ->
+            Text(
+                "“$t”",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontStyle = FontStyle.Italic,
             )
         }
     }

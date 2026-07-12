@@ -11,6 +11,7 @@ import world.larutan.engine.being.GoalStatus
 import world.larutan.engine.being.MemoryEvent
 import world.larutan.engine.being.MemoryKind
 import world.larutan.engine.being.Personality
+import world.larutan.engine.being.Realm
 import world.larutan.engine.being.Sentiment
 import world.larutan.engine.event.Chronicle
 import world.larutan.engine.event.EventKind
@@ -346,6 +347,7 @@ class Simulation(
 
         if (wasStranger && rel.bond >= 20) {
             record(b, MemoryKind.BONDED, "met ${other.name}", 0.3, 0.3, other.id)
+            b.moralLedger += 0.15 // reaching out and holding a bond weighs to the good
             chronicle.add(WorldEvent(world.tick, EventKind.BOND_FORMED, "${b.name} and ${other.name} began to know each other.", b.id, other.id))
         }
         if (rel.sentiment == Sentiment.FRIENDSHIP || rel.sentiment == Sentiment.LOVE) {
@@ -385,6 +387,11 @@ class Simulation(
         if (g.status == GoalStatus.ACHIEVED) {
             b.drives.change(DriveType.PURPOSE, 40.0)
             b.emotion.feel(EmotionName.JOY, 0.6)
+            // A life's work weighs the soul -> goals that lift others weigh most.
+            b.moralLedger += when (g.kind) {
+                GoalKind.FAMILY, GoalKind.PROTECT, GoalKind.BELONG -> 1.0
+                else -> 0.3
+            }
             record(b, MemoryKind.ACHIEVED, "did the thing they set out to: ${g.target}", 0.9, 0.8)
             chronicle.add(WorldEvent(world.tick, EventKind.GOAL_ACHIEVED, "${b.name} achieved it: ${g.target}.", b.id, significant = true))
         }
@@ -409,6 +416,7 @@ class Simulation(
                 b.emotion.distressLoad -= 12
                 if (other != null) {
                     b.relationshipWith(other.id).cool(6.0)
+                    b.moralLedger -= 0.3 // venting the hurt onto others weighs against them
                     b.emotion.feel(EmotionName.ANGER, 0.1)
                     chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} lashed out at ${other.name}.", b.id, other.id))
                 }
@@ -464,6 +472,8 @@ class Simulation(
         a.lineage.children += child.id
         b.lineage.children += child.id
         beings += child
+        a.moralLedger += 0.4 // bringing up a life is one of the heavier good weights
+        b.moralLedger += 0.4
         record(a, MemoryKind.BORN, "a child, ${child.name}", 0.9, 0.9, child.id)
         record(b, MemoryKind.BORN, "a child, ${child.name}", 0.9, 0.9, child.id)
         chronicle.add(WorldEvent(world.tick, EventKind.BIRTH, "${child.name} was born to ${a.name} and ${b.name}.", child.id, significant = true))
@@ -489,7 +499,12 @@ class Simulation(
         b.alive = false
         b.deathCause = cause
         b.currentAction = "gone"
-        chronicle.add(WorldEvent(world.tick, EventKind.DEATH, "${b.name} died of $cause.", b.id, significant = true))
+        // A soul leaves a last reflection, is weighed, and settles into a realm (§10.7).
+        b.finalThought = finalThoughtFor(b)
+        val realm = Realm.sortFor(b.moralLedger)
+        b.realm = realm
+        settleSoul(b, realm)
+        chronicle.add(WorldEvent(world.tick, EventKind.DEATH, "${b.name} died of $cause, and passed into ${realm.label}.", b.id, significant = true))
         // Death lands on everyone bonded to them.
         for (other in beings.filter { it.alive }) {
             val rel = other.relationships[b.id] ?: continue
@@ -498,6 +513,51 @@ class Simulation(
                 other.emotion.feel(EmotionName.GRIEF, (rel.bond / 100.0).coerceIn(0.2, 1.0))
                 other.emotion.distressLoad += rel.bond * 0.4
                 record(other, MemoryKind.LOST, "lost ${b.name}", 1.0, -0.9, b.id)
+            }
+        }
+    }
+
+    /** A last surfaced reflection at death, coloured by how the life weighed out. */
+    private fun finalThoughtFor(b: Being): String {
+        val pool = when {
+            b.moralLedger >= 1.0 -> listOf(
+                "So this is the end of it. I think I did right by them.",
+                "Let them remember the good days. There were good days.",
+                "I'm not as afraid as I thought I would be.",
+            )
+            b.moralLedger <= -1.0 -> listOf(
+                "There was more I meant to make right. Too late now.",
+                "I could have been softer. I see that now.",
+                "I wonder if anyone will miss me.",
+            )
+            else -> listOf(
+                "There was more I wanted. There always is.",
+                "It goes quiet. Stranger than I imagined.",
+                "I hope someone carries this on.",
+            )
+        }
+        return rng.pick(pool)
+    }
+
+    /**
+     * The dead don't tick; a soul sits in a fixed feeling, pinned by its realm.
+     * Heaven is contentment, hell is heaviness, purgatory is an unfinished, hopeful
+     * middle -> the same emotion model, its rules rewritten (§10.7).
+     */
+    private fun settleSoul(b: Being, realm: Realm) {
+        b.emotion.active.clear()
+        when (realm) {
+            Realm.HEAVEN -> {
+                b.emotion.valence = 0.9; b.emotion.arousal = 0.1; b.emotion.distressLoad = 0.0
+                b.emotion.feel(EmotionName.CONTENTMENT, 0.8)
+            }
+            Realm.HELL -> {
+                b.emotion.valence = -0.8; b.emotion.arousal = 0.3
+                b.emotion.feel(EmotionName.GRIEF, 0.6)
+            }
+            Realm.PURGATORY -> {
+                b.emotion.valence = 0.0; b.emotion.arousal = 0.2
+                b.emotion.feel(EmotionName.HOPE, 0.3)
             }
         }
     }
