@@ -94,6 +94,7 @@ class Simulation(
         execute(action, b)
         advanceGoal(b, action)
         cope(b)
+        maybeDiscoverCultivation(b)
         maybeThink(b)
         checkMortality(b)
     }
@@ -211,6 +212,7 @@ class Simulation(
             ActionType.SOCIALIZE -> 1.0 + p.warmth * 0.6
             ActionType.PLAY -> 1.0 + p.curiosity * 0.3 + (if (b.lifeStage.label == "child") 0.8 else 0.0)
             ActionType.BUILD -> 1.0 + p.industry * 0.6
+            ActionType.TEND -> 1.0 + p.industry * 0.5 + p.curiosity * 0.2
             ActionType.FORAGE -> 1.0 + p.industry * 0.4
             ActionType.REFLECT -> 1.0 + (if (b.lifeStage.label == "elder") 0.6 else 0.0) - p.industry * 0.2
             ActionType.SEEK_WARMTH -> 1.0 + p.resilience.let { if (it < 0) 0.3 else 0.0 }
@@ -226,6 +228,8 @@ class Simulation(
         ActionType.REST -> if (world.isNight) 1.4 else 0.7
         ActionType.SOCIALIZE, ActionType.PLAY -> if (nearestOther(b) != null) 1.2 else 0.05
         ActionType.BUILD -> if (nearestMaterials(b) != null) 1.0 else 0.1
+        // Only a being who's learned to cultivate reaches for it -> otherwise near-zero.
+        ActionType.TEND -> if (b.skills[SkillType.CULTIVATION] > 0.0 && nearestGrowable(b) != null) 1.1 else 0.02
         else -> 1.0
     }
 
@@ -325,6 +329,7 @@ class Simulation(
                     b.skills.practice(SkillType.BUILDING, 0.012)
                 }
             }
+            ActionType.TEND -> tend(b)
             ActionType.REFLECT -> {
                 b.drives.change(DriveType.PURPOSE, 10.0)
                 b.drives.change(DriveType.AUTONOMY, 6.0)
@@ -420,6 +425,44 @@ class Simulation(
         (b.memory.events.count { it.kind == MemoryKind.STARVED } * 0.15).coerceAtMost(0.6)
 
     /**
+     * Tend a patch of ground: raise how cultivated it is and coax a little food up now.
+     * A cultivated plot holds more and comes back faster (§3.5), so a being who keeps one
+     * near home leans less on the wild. Returns whether any ground was worked.
+     */
+    internal fun tend(b: Being): Boolean {
+        val plot = nearestGrowable(b) ?: return false
+        if (!stepToward(b, plot.first, plot.second)) return false
+        val t = world.tileAt(b.x, b.y)
+        if (t.foodCapacity <= 0.0) return false
+        val gain = 0.04 + b.skills[SkillType.CULTIVATION] * 0.06
+        t.cultivation = (t.cultivation + gain).coerceAtMost(1.0)
+        t.food = (t.food + 6.0).coerceAtMost(t.effectiveFoodCapacity)
+        b.skills.practice(SkillType.CULTIVATION, 0.01)
+        b.hold(BeliefKind.HARD_WORK_PROVIDES, 0.02, "coaxing food from the ground")
+        return true
+    }
+
+    /**
+     * Cultivation is a genuine leap, not a given: a fed, safe, driven mind may hit on the
+     * idea of tending the ground rather than only gathering from it (§3.5). It's rare, and
+     * once it happens it spreads by teaching (§9). Discovery is a payoff beat -> it surfaces.
+     */
+    private fun maybeDiscoverCultivation(b: Being) {
+        if (b.skills[SkillType.CULTIVATION] > 0.0) return
+        val stage = b.lifeStage.label
+        if (stage != "adult" && stage != "elder") return
+        if (b.drives.lowerNeedsSatisfaction() < 0.55) return
+        if (b.personality.industry * 0.5 + b.personality.curiosity * 0.5 < 0.3) return
+        if (!rng.chance(0.0008)) return
+        b.skills.practice(SkillType.CULTIVATION, 0.15)
+        b.hold(BeliefKind.HARD_WORK_PROVIDES, 0.2, "learning to coax food from the ground")
+        b.think("If I tend this ground, it might bear for me. I could keep it near.")
+        chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE, "${b.name} learned to coax food from the ground.", b.id, significant = true))
+    }
+
+    private fun nearestGrowable(b: Being): Pair<Int, Int>? = nearestTile(b) { it.foodCapacity > 0.0 }
+
+    /**
      * An elder near a child hands down what they know: a nudge toward their skill, and
      * a fainter version of their firmest conviction. Passed on weaker and imperfect,
      * a belief drifts as it travels a lineage -> the seed of shared story and myth (§9).
@@ -432,6 +475,8 @@ class Simulation(
 
         student.skills.learnFrom(teacher.skills[SkillType.FORAGING], SkillType.FORAGING)
         student.skills.learnFrom(teacher.skills[SkillType.BUILDING], SkillType.BUILDING)
+        // Cultivation, once someone hits on it, travels down the generations by being shown.
+        student.skills.learnFrom(teacher.skills[SkillType.CULTIVATION], SkillType.CULTIVATION)
 
         val belief = teacher.beliefs.maxByOrNull { it.strength } ?: return
         val isNew = student.beliefs.none { it.kind == belief.kind }
@@ -690,8 +735,13 @@ class Simulation(
         val yield = world.season.foodYield
         for (i in 0 until slice) {
             val t = world.tiles[(start + i) % total]
-            if (t.foodCapacity > 0 && t.food < t.foodCapacity) {
-                t.food = (t.food + t.foodCapacity * 0.02 * yield).coerceAtMost(t.foodCapacity)
+            if (t.foodCapacity > 0) {
+                val cap = t.effectiveFoodCapacity // tended ground holds more...
+                if (t.food < cap) {
+                    // ...and comes back faster than the wild.
+                    t.food = (t.food + cap * (0.02 + t.cultivation * 0.02) * yield).coerceAtMost(cap)
+                }
+                if (t.cultivation > 0.0) t.cultivation *= 0.999 // without tending, it creeps back to wild
             }
             if (t.materialsCapacity > 0 && t.materials < t.materialsCapacity) {
                 t.materials = (t.materials + 0.3).coerceAtMost(t.materialsCapacity)

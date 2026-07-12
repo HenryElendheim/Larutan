@@ -71,6 +71,9 @@ class Tile(
     var water: Double,
     var materials: Double,
     val shelterQuality: Double,
+    // How tended this ground is, 0..1 -> a cultivated plot bears more and comes back
+    // faster (§3.5). It creeps back toward wild if no one keeps tending it.
+    var cultivation: Double = 0.0,
 ) {
     // The most this tile can hold; regrowth climbs back toward it with the season.
     val foodCapacity: Double = when (terrain) {
@@ -78,6 +81,9 @@ class Tile(
         Terrain.FOREST -> 100.0
         else -> 0.0
     }
+
+    /** What a tended plot can hold: tending lifts the ceiling by up to four-fifths. */
+    val effectiveFoodCapacity: Double get() = foodCapacity * (1.0 + cultivation * 0.8)
     val waterCapacity: Double = if (terrain == Terrain.WATER) 100.0 else 0.0
     val materialsCapacity: Double = when (terrain) {
         Terrain.FOREST -> 80.0

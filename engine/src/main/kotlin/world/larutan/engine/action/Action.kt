@@ -18,6 +18,7 @@ enum class ActionType(val label: String, val reliefs: Map<DriveType, Double>) {
     WANDER("wandering", mapOf(DriveType.CURIOSITY to 10.0, DriveType.AUTONOMY to 8.0)),
     EXPLORE("exploring", mapOf(DriveType.CURIOSITY to 26.0, DriveType.AUTONOMY to 12.0)),
     BUILD("building", mapOf(DriveType.SECURITY to 26.0, DriveType.PURPOSE to 12.0)),
+    TEND("tending the ground", mapOf(DriveType.PURPOSE to 12.0, DriveType.SECURITY to 8.0)),
     REFLECT("reflecting", mapOf(DriveType.PURPOSE to 14.0, DriveType.AUTONOMY to 10.0)),
     GRIEVE("grieving", emptyMap()),
 }
