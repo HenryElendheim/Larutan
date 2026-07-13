@@ -47,6 +47,13 @@ object Thoughts {
             else -> {}
         }
 
+        // An atypical mind falls into its own voice now and then, when nothing urgent
+        // is pulling at it — the tail trait speaking plainly. Raw feeling still comes first
+        // (handled above); this only colours the ordinary moments.
+        being.personality.signature?.let { sig ->
+            if (rng.chance(0.22)) return sig.voice
+        }
+
         return when (dominant) {
             DriveType.HUNGER -> if (valence < 0) pick(rng, listOf(
                 "My stomach won't be quiet. I need to find something to eat.",

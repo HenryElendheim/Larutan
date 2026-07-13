@@ -353,6 +353,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             action = currentAction,
             mood = emotion.moodLabel(),
             atypical = personality.isAtypical,
+            atypicalSignature = personality.signature?.phrase,
             foodStore = foodStore.toInt(),
             alive = alive,
             immortal = immortal,

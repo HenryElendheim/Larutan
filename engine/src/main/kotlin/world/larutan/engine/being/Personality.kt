@@ -21,10 +21,30 @@ data class Personality(
 ) {
     /** True when one or more traits sit far out in the tail — a mind unlike its peers (not lesser, different). */
     val isAtypical: Boolean
-        get() = listOf(boldness, warmth, curiosity, resilience, industry, temper, optimism)
-            .any { kotlin.math.abs(it) > 0.82 }
+        get() = axes().any { kotlin.math.abs(it.second) > ATYPICAL_EDGE }
+
+    /**
+     * The one trait that leans farthest out, if this is an atypical mind — the shape of
+     * how it differs, in a word, a phrase, and a private voice. Null for a typical mind.
+     * This is what makes an outlier legible: not "a mind apart", but *how* it is apart.
+     */
+    val signature: Signature?
+        get() {
+            val (trait, value) = axes().maxByOrNull { kotlin.math.abs(it.second) } ?: return null
+            if (kotlin.math.abs(value) <= ATYPICAL_EDGE) return null
+            return Signature.of(trait, value > 0.0)
+        }
+
+    private fun axes(): List<Pair<String, Double>> = listOf(
+        "boldness" to boldness, "warmth" to warmth, "curiosity" to curiosity,
+        "resilience" to resilience, "industry" to industry, "temper" to temper,
+        "optimism" to optimism,
+    )
 
     companion object {
+        /** How far out a trait must sit to mark a mind as atypical. */
+        const val ATYPICAL_EDGE = 0.82
+
         /** A being drawn from the species norm — most traits mild, occasionally an outlier. */
         fun random(rng: Rng, atypicalChance: Double = 0.12): Personality {
             fun axis(): Double {
@@ -67,6 +87,66 @@ data class Personality(
                 temper = blend(a.temper, b.temper),
                 optimism = blend(a.optimism, b.optimism),
             )
+        }
+    }
+}
+
+/**
+ * The defining lean of an atypical mind. Names the trait, which way it runs, a phrase
+ * for the panel ("a hunger to know that never settles"), and a private voice the being
+ * falls into now and then — the thing they'd say that no typical mind would.
+ */
+@Serializable
+data class Signature(
+    val trait: String,   // which axis: "curiosity", "temper", ...
+    val high: Boolean,   // the far end or the near end of it
+    val phrase: String,  // a one-line read for the follower
+    val voice: String,   // a thought only this kind of mind would think
+) {
+    companion object {
+        fun of(trait: String, high: Boolean): Signature = when (trait to high) {
+            "boldness" to true -> Signature(trait, high,
+                "a recklessness that doesn't flinch",
+                "The others hang back and weigh it. I've already gone.")
+            "boldness" to false -> Signature(trait, high,
+                "a caution that sees every edge",
+                "Everyone calls it fear. I call it seeing the drop before I reach it.")
+            "warmth" to true -> Signature(trait, high,
+                "a tenderness that spills over",
+                "I feel the others' weather as if it were my own sky.")
+            "warmth" to false -> Signature(trait, high,
+                "a distance others find hard to cross",
+                "People tire me in a way the empty tiles never do.")
+            "curiosity" to true -> Signature(trait, high,
+                "a hunger to know that never settles",
+                "There's always one more thing past the edge, and I have to see it.")
+            "curiosity" to false -> Signature(trait, high,
+                "a deep contentment with what is",
+                "I don't need to know what's over the hill. Here is enough.")
+            "resilience" to true -> Signature(trait, high,
+                "a hardness the world can't seem to dent",
+                "It hit me, and I got up. That's all there ever is to it.")
+            "resilience" to false -> Signature(trait, high,
+                "a rawness that feels everything keenly",
+                "Small things land hard on me. I've stopped pretending they don't.")
+            "industry" to true -> Signature(trait, high,
+                "a drive that never rests",
+                "Rest feels like something coming undone. I'd rather be making.")
+            "industry" to false -> Signature(trait, high,
+                "a stillness the busy can't understand",
+                "They rush at the day. I let it come to me, and it does.")
+            "temper" to true -> Signature(trait, high,
+                "a fire close to the surface",
+                "It rises fast in me. I've hurt people I loved before it cooled.")
+            "temper" to false -> Signature(trait, high,
+                "a calm that nothing seems to shake",
+                "The storm passes over me. I've never quite known why it doesn't land.")
+            "optimism" to true -> Signature(trait, high,
+                "a light that won't go out",
+                "Even in the lean season, some part of me is sure it turns out well.")
+            else -> Signature(trait, high,
+                "an eye that finds the dark first",
+                "I see how it ends before it starts. Being right is no comfort.")
         }
     }
 }

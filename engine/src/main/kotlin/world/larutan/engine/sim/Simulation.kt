@@ -185,8 +185,10 @@ class Simulation(
         val candidates = ActionType.entries.filter { it != ActionType.GRIEVE }
         val scores = DoubleArray(candidates.size) { i -> utility(b, candidates[i]) }
         // Low temperature: the best action usually wins, but a little chance keeps
-        // lives from being perfectly predictable.
-        val idx = rng.weightedChoice(scores, temperature = 0.22)
+        // lives from being perfectly predictable. An atypical mind runs a touch warmer,
+        // so it surprises you more often — it doesn't just take the sensible option.
+        val temperature = if (b.personality.isAtypical) 0.34 else 0.22
+        val idx = rng.weightedChoice(scores, temperature = temperature)
         return candidates[idx]
     }
 

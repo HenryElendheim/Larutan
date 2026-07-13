@@ -86,6 +86,10 @@ private fun Header(b: FollowedBeing) {
                 Text("  ageless", style = MaterialTheme.typography.labelSmall, color = Ember)
             }
         }
+        // For an atypical mind, name *how* it differs — not just that it does.
+        b.atypicalSignature?.let { phrase ->
+            Text(phrase, style = MaterialTheme.typography.bodySmall, color = Tide)
+        }
         Text(
             if (b.alive) "generation ${b.generation} · ${b.lifeStage} · ${b.ageYears} years"
             else "generation ${b.generation} · gone to ${b.deathCause ?: "the world"}",

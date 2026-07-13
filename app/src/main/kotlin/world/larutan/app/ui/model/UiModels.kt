@@ -102,6 +102,7 @@ data class FollowedBeing(
     val action: String,
     val mood: String,
     val atypical: Boolean,
+    val atypicalSignature: String?, // for an atypical mind, how it differs, in a phrase
     val foodStore: Int,        // what they're carrying put by, so hoarding and sharing read
     val alive: Boolean,
     val immortal: Boolean,
