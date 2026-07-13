@@ -121,7 +121,28 @@ data class FollowedBeing(
     val relationships: List<RelationView>,
     val skills: List<DriveBar>,     // what they've learned to do well (reuses the labelled-bar shape)
     val beliefs: List<String>,      // what they've come to believe from what they've lived
+    val fates: List<String>,        // intentions set on their future, still waiting to come to pass
 )
+
+/** The two halves of a fate the player composes: the moment it waits for, and what it brings. */
+data class FateOption(val id: String, val label: String)
+
+/** The choices offered when setting a fate, mirrored from the engine so the UI stays declarative. */
+object FateChoices {
+    val triggers = listOf(
+        FateOption("HUNGER", "when hunger bites"),
+        FateOption("LONELINESS", "when they're alone too long"),
+        FateOption("COLD", "when the cold gets in"),
+        FateOption("DESPAIR", "when hope runs out"),
+        FateOption("LIFES_END", "as their years run short"),
+    )
+    val boons = listOf(
+        FateOption("PROVISION", "food will find them"),
+        FateOption("EASE", "an ease will settle"),
+        FateOption("WARMTH", "warmth will reach them"),
+        FateOption("PURPOSE", "a purpose will arrive"),
+    )
+}
 
 data class DriveBar(val label: String, val value: Float)
 

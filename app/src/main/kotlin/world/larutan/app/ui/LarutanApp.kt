@@ -91,7 +91,12 @@ fun LarutanApp(vm: SimulationViewModel) {
 
         val followed = state.followed
         if (followed != null) {
-            InnerLifePanel(followed, onGod = vm::invoke, onReincarnate = vm::reincarnateFollowed)
+            InnerLifePanel(
+                followed,
+                onGod = vm::invoke,
+                onReincarnate = vm::reincarnateFollowed,
+                onDecreeFate = vm::decreeFate,
+            )
         } else {
             Text(
                 "No one left to follow. The world is quiet.",

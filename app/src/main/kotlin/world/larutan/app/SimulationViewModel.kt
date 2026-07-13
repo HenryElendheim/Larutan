@@ -30,6 +30,8 @@ import world.larutan.engine.being.DriveType
 import world.larutan.engine.being.Sentiment
 import world.larutan.engine.being.SkillType
 import world.larutan.engine.event.WorldEvent
+import world.larutan.engine.god.FateBoon
+import world.larutan.engine.god.FateTrigger
 import world.larutan.engine.god.God
 import world.larutan.engine.sim.Persistence
 import world.larutan.engine.sim.Simulation
@@ -219,6 +221,18 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         publish()
     }
 
+    /**
+     * Set a fate on the being you're following: an intention that waits until their
+     * life meets the trigger, then comes to pass on its own (§10.6). The two halves
+     * arrive as the engine enum names the UI mirrored.
+     */
+    fun decreeFate(triggerId: String, boonId: String) {
+        val trigger = FateTrigger.valueOf(triggerId)
+        val boon = FateBoon.valueOf(boonId)
+        god.decree(followedId, trigger, boon)
+        publish()
+    }
+
     /** Time only advances while you're watching (§10.4), and the world is saved when you leave. */
     fun setActive(isActive: Boolean) {
         active = isActive
@@ -391,6 +405,9 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 .filter { skills[it] > 0.02 } // only what they've actually begun to learn
                 .map { DriveBar(it.label, skills[it].toFloat()) },
             beliefs = beliefs.sortedByDescending { it.strength }.take(5).map { it.statement },
+            fates = sim.fates
+                .filter { it.subjectId == id && !it.fulfilled }
+                .map { it.sentence(name) },
         )
     }
 

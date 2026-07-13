@@ -8,6 +8,7 @@ import world.larutan.engine.being.DriveType
 import world.larutan.engine.being.EmotionName
 import world.larutan.engine.being.Goal
 import world.larutan.engine.being.GoalKind
+import world.larutan.engine.being.LifeStage
 import world.larutan.engine.being.GoalStatus
 import world.larutan.engine.being.MemoryEvent
 import world.larutan.engine.being.MemoryKind
@@ -18,6 +19,9 @@ import world.larutan.engine.being.SkillType
 import world.larutan.engine.event.Chronicle
 import world.larutan.engine.event.EventKind
 import world.larutan.engine.event.WorldEvent
+import world.larutan.engine.god.Fate
+import world.larutan.engine.god.FateBoon
+import world.larutan.engine.god.FateTrigger
 import world.larutan.engine.narrative.Thoughts
 import world.larutan.engine.world.Season
 import world.larutan.engine.world.Terrain
@@ -35,6 +39,8 @@ class Simulation(
     val beings: MutableList<Being>,
     val rng: Rng = Rng(config.seed xor 0x5151),
     val chronicle: Chronicle = Chronicle(),
+    /** Intentions set on the future, waiting for a life to turn (§10.6). */
+    val fates: MutableList<Fate> = mutableListOf(),
 ) {
     private var nextId: Int = (beings.maxOfOrNull { it.id } ?: -1) + 1
     private var lastSeason: Season = world.season
@@ -48,6 +54,10 @@ class Simulation(
     fun step() {
         val startOfNight = world.hourOfDay == 21
         rollWeather()
+
+        // A fate meets its moment before the hour is lived, so its boon can carry
+        // the being through the very turn that called it up.
+        resolveFates()
 
         for (being in beings.filter { it.alive }) {
             updateBeing(being, startOfNight)
@@ -66,6 +76,63 @@ class Simulation(
     }
 
     fun run(ticks: Int) { repeat(ticks) { if (living().isNotEmpty()) step() } }
+
+    // ---- fate (§10.6) -------------------------------------------------------
+
+    /** Set an intention on a being's future; it waits until their life turns. */
+    fun decree(fate: Fate) { fates += fate }
+
+    /**
+     * Walk the waiting fates and let any whose moment has come to pass. A fulfilled
+     * fate stays in the list, marked, so a rewind can arm it again with the past.
+     */
+    private fun resolveFates() {
+        if (fates.isEmpty()) return
+        for (fate in fates) {
+            if (fate.fulfilled) continue
+            val b = byId(fate.subjectId)?.takeIf { it.alive } ?: continue
+            if (!triggerMet(b, fate.trigger)) continue
+            grantBoon(b, fate.boon)
+            fate.fulfilled = true
+            chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                "A fate long set for ${b.name} came to pass.", b.id, significant = true))
+        }
+    }
+
+    private fun triggerMet(b: Being, trigger: FateTrigger): Boolean = when (trigger) {
+        FateTrigger.HUNGER -> b.drives[DriveType.HUNGER] < 25.0
+        FateTrigger.LONELINESS -> b.drives[DriveType.CONNECTION] < 20.0 || b.emotion.dominant() == EmotionName.LONELINESS
+        FateTrigger.COLD -> b.drives[DriveType.WARMTH] < 25.0
+        FateTrigger.DESPAIR -> b.emotion.valence < -0.6
+        FateTrigger.LIFES_END -> b.lifeStage == LifeStage.ELDER && b.drives[DriveType.HEALTH] < 35.0
+    }
+
+    private fun grantBoon(b: Being, boon: FateBoon) {
+        when (boon) {
+            FateBoon.PROVISION -> {
+                b.foodStore += 40.0
+                b.drives.change(DriveType.HUNGER, 25.0)
+                b.memory.record(MemoryEvent(world.tick, MemoryKind.STORED, "food, arriving just as it was needed", null, 0.5, 0.6, salience = 1.0))
+            }
+            FateBoon.EASE -> {
+                listOf(DriveType.HUNGER, DriveType.THIRST, DriveType.WARMTH, DriveType.ENERGY, DriveType.HEALTH)
+                    .forEach { b.drives[it] = (b.drives[it] + 35.0).coerceAtMost(100.0) }
+                b.emotion.valence = (b.emotion.valence + 0.4).coerceAtMost(1.0)
+                b.emotion.feel(EmotionName.RELIEF, 0.5)
+                b.emotion.distressLoad = (b.emotion.distressLoad - 25.0).coerceAtLeast(0.0)
+            }
+            FateBoon.WARMTH -> b.drives[DriveType.WARMTH] = 100.0
+            FateBoon.PURPOSE -> {
+                val g = Goal.formFor(b.personality, b.memory)
+                if (g != null) {
+                    g.status = GoalStatus.ACTIVE
+                    b.goal = g
+                    b.drives.change(DriveType.PURPOSE, 20.0)
+                    b.think("A purpose settled on me, sure as sunrise. I want to ${g.target}.")
+                }
+            }
+        }
+    }
 
     // ---- per-being update ---------------------------------------------------
 

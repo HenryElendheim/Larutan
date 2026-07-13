@@ -17,6 +17,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +29,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import world.larutan.app.ui.model.DriveBar
+import world.larutan.app.ui.model.FateChoices
 import world.larutan.app.ui.model.FollowedBeing
 import world.larutan.app.ui.model.GoalView
 import world.larutan.app.ui.model.GodAction
@@ -44,6 +49,7 @@ fun InnerLifePanel(
     being: FollowedBeing,
     onGod: (GodAction) -> Unit,
     onReincarnate: () -> Unit,
+    onDecreeFate: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -51,6 +57,7 @@ fun InnerLifePanel(
         if (being.alive) {
             // A living being: the full inner life, and the powers to reach into it.
             GodTouch(onGod, immortal = being.immortal)
+            FateComposer(being.fates, onDecreeFate)
             if (being.emotions.isNotEmpty()) Emotions(being.emotions)
             being.lastThought?.let { Utterance(label = "Thinking", text = it) }
             being.goal?.let { Goal(it) }
@@ -138,6 +145,81 @@ private fun GodTouch(onGod: (GodAction) -> Unit, immortal: Boolean) {
             )
         }
     }
+}
+
+@Composable
+private fun FateComposer(pending: List<String>, onDecree: (String, String) -> Unit) {
+    // Reach into their future instead of their present: choose the moment to wait for,
+    // and what should arrive when it comes. The fate then waits on its own.
+    var trigger by remember { mutableStateOf(FateChoices.triggers.first().id) }
+    var boon by remember { mutableStateOf(FateChoices.boons.first().id) }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SectionLabel("Set a fate")
+
+        // Any fates already waiting on this being, in their own words.
+        pending.forEach { line ->
+            Text(
+                line,
+                style = MaterialTheme.typography.bodyMedium,
+                fontStyle = FontStyle.Italic,
+                color = Tide,
+            )
+        }
+
+        Text("The moment it waits for", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FateChoices.triggers.forEach { opt ->
+                PickChip(opt.label, selected = opt.id == trigger) { trigger = opt.id }
+            }
+        }
+
+        Text("What it brings", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FateChoices.boons.forEach { opt ->
+                PickChip(opt.label, selected = opt.id == boon) { boon = opt.id }
+            }
+        }
+
+        Text(
+            "Set it",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.primary)
+                .clickable { onDecree(trigger, boon) }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+/** A small selectable chip: filled when chosen, hollow otherwise. */
+@Composable
+private fun PickChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        style = MaterialTheme.typography.labelLarge,
+        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background)
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    )
 }
 
 @Composable

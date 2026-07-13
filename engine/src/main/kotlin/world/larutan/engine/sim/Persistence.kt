@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import world.larutan.engine.Rng
 import world.larutan.engine.being.Being
 import world.larutan.engine.event.Chronicle
+import world.larutan.engine.god.Fate
 import world.larutan.engine.world.World
 
 /**
@@ -21,6 +22,7 @@ data class WorldState(
     val beings: List<Being>,
     val chronicle: Chronicle,
     val rng: Rng,
+    val fates: List<Fate> = emptyList(), // waiting intentions ride along, so rewind arms them again
 )
 
 object Persistence {
@@ -31,7 +33,7 @@ object Persistence {
     }
 
     fun snapshot(sim: Simulation): WorldState =
-        WorldState(sim.config, sim.world, sim.beings.toList(), sim.chronicle, Rng(sim.rng.state))
+        WorldState(sim.config, sim.world, sim.beings.toList(), sim.chronicle, Rng(sim.rng.state), sim.fates.toList())
 
     fun serialize(state: WorldState): String = json.encodeToString(state)
 
@@ -44,5 +46,6 @@ object Persistence {
         beings = state.beings.toMutableList(),
         rng = state.rng,
         chronicle = state.chronicle,
+        fates = state.fates.toMutableList(),
     )
 }

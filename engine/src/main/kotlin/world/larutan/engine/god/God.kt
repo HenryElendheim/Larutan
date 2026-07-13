@@ -130,6 +130,23 @@ class God(private val sim: Simulation) {
         alive(id)?.let { it.immortal = false; log("Time found ${it.name} again.", it.id) }
     }
 
+    // ---- fate (§10.6) -------------------------------------------------------
+
+    /**
+     * Set a fate on a living being: an intention that waits, dormant, until their
+     * life meets the trigger, then comes to pass on its own. Returns false if there's
+     * no such living being to set it on.
+     */
+    fun decree(id: Int, trigger: FateTrigger, boon: FateBoon): Boolean {
+        val b = alive(id) ?: return false
+        sim.decree(Fate(b.id, trigger, boon))
+        log("A fate was set on ${b.name}: ${trigger.label}, ${boon.label}.", b.id, significant = true)
+        return true
+    }
+
+    /** The fates still waiting on a being (for the panel to show what's been set). */
+    fun fatesFor(id: Int): List<Fate> = sim.fates.filter { it.subjectId == id && !it.fulfilled }
+
     // ---- the afterlife ------------------------------------------------------
 
     /**
