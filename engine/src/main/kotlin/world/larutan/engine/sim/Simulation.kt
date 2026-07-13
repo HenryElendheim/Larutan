@@ -446,11 +446,30 @@ class Simulation(
             record(b, MemoryKind.SOCIALIZED, "time with ${other.name}", 0.2, 0.25, other.id)
             b.hold(BeliefKind.OTHERS_CAN_BE_TRUSTED, 0.04, "being known and not turned away")
         }
+        // Two who are grieving, sitting together, take some of the weight off each other.
+        if (isGrieving(b) && isGrieving(other)) comfort(b, other)
         // The old show the young how, and pass on what they believe -> culture begins here (§9).
         teachIfElder(b, other)
         teachIfElder(other, b)
         maybeShareFood(b, other)
         maybeReproduce(b, other)
+    }
+
+    private fun isGrieving(b: Being): Boolean =
+        b.emotion.active.any { it.name == EmotionName.GRIEF && it.intensity > 0.1 }
+
+    /** Two who grieve, together: each takes some of the weight off the other. */
+    private fun comfort(a: Being, b: Being) {
+        for (m in listOf(a, b)) {
+            m.emotion.active.firstOrNull { it.name == EmotionName.GRIEF }
+                ?.let { it.intensity = (it.intensity - 0.12).coerceAtLeast(0.0) }
+            m.emotion.distressLoad = (m.emotion.distressLoad - 8.0).coerceAtLeast(0.0)
+            m.emotion.feel(EmotionName.GRATITUDE, 0.2)
+        }
+        a.relationshipWith(b.id).warm(3.0)
+        b.relationshipWith(a.id).warm(3.0)
+        a.hold(BeliefKind.WE_CARRY_EACH_OTHER, 0.05, "not being left alone with the grief")
+        record(a, MemoryKind.SOCIALIZED, "sat with ${b.name} in the grief", 0.5, 0.2, b.id)
     }
 
     // ---- food and society (§3.5) --------------------------------------------
@@ -747,15 +766,25 @@ class Simulation(
         settleSoul(b, realm)
         chronicle.add(WorldEvent(world.tick, EventKind.DEATH, "${b.name} died of $cause, and passed into ${realm.label}.", b.id, significant = true))
         // Death lands on everyone bonded to them.
-        for (other in beings.filter { it.alive }) {
-            val rel = other.relationships[b.id] ?: continue
-            if (rel.bond > 30) {
-                rel.sentiment = Sentiment.GRIEF
-                other.emotion.feel(EmotionName.GRIEF, (rel.bond / 100.0).coerceIn(0.2, 1.0))
-                other.emotion.distressLoad += rel.bond * 0.4
-                other.hold(BeliefKind.THE_WORLD_TAKES_WHAT_YOU_LOVE, 0.12, "losing ${b.name}")
-                record(other, MemoryKind.LOST, "lost ${b.name}", 1.0, -0.9, b.id)
+        val mourners = beings.filter { it.alive && (it.relationships[b.id]?.bond ?: 0.0) > 30 }
+        for (other in mourners) {
+            val rel = other.relationships.getValue(b.id)
+            rel.sentiment = Sentiment.GRIEF
+            other.emotion.feel(EmotionName.GRIEF, (rel.bond / 100.0).coerceIn(0.2, 1.0))
+            other.emotion.distressLoad += rel.bond * 0.4
+            other.hold(BeliefKind.THE_WORLD_TAKES_WHAT_YOU_LOVE, 0.12, "losing ${b.name}")
+            record(other, MemoryKind.LOST, "lost ${b.name}", 1.0, -0.9, b.id)
+        }
+
+        // Grief shared is grief made bearable: those who mourn the same loss are drawn
+        // closer to each other, and come to hold it together -> the root of mourning (§9).
+        if (mourners.size >= 2) {
+            for (m in mourners) {
+                mourners.forEach { n -> if (n.id != m.id) m.relationshipWith(n.id).warm(4.0) }
+                m.hold(BeliefKind.WE_CARRY_EACH_OTHER, 0.1, "mourning ${b.name} together")
             }
+            chronicle.add(WorldEvent(world.tick, EventKind.COPED,
+                "Those who loved ${b.name} drew together in the loss.", mourners.first().id, significant = true))
         }
     }
 

@@ -15,6 +15,7 @@ enum class BeliefKind(val statement: String) {
     THE_WORLD_TAKES_WHAT_YOU_LOVE("the world takes what you love"),
     HARD_WORK_PROVIDES("hard work provides"),
     THE_FAR_PLACES_CALL("there is more beyond the edge"),
+    WE_CARRY_EACH_OTHER("we carry each other through the losses"),
 }
 
 @Serializable
