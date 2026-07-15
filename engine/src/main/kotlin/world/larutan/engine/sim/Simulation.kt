@@ -836,9 +836,11 @@ class Simulation(
         lastBirthTick[a.id] = world.tick
         lastBirthTick[b.id] = world.tick
 
+        // A child born to a grieving parent may carry a lost loved one's name forward.
+        val namesake = if (rng.chance(0.5)) lostLovedName(a) ?: lostLovedName(b) else null
         val child = Being(
             id = nextId++,
-            name = Names.random(rng),
+            name = namesake ?: Names.random(rng),
             x = a.x,
             y = a.y,
             personality = Personality.inherit(a.personality, b.personality, rng, config.let { 0.15 }),
@@ -860,8 +862,26 @@ class Simulation(
         }
         record(a, MemoryKind.BORN, "a child, ${child.name}", 0.9, 0.9, child.id)
         record(b, MemoryKind.BORN, "a child, ${child.name}", 0.9, 0.9, child.id)
-        chronicle.add(WorldEvent(world.tick, EventKind.BIRTH, "${child.name} was born to ${a.name} and ${b.name}.", child.id, significant = true))
+        if (namesake != null) {
+            // Named for someone gone: the loss carried forward into a new life (§9, §10.7).
+            a.hold(BeliefKind.WE_CARRY_EACH_OTHER, 0.08, "naming ${child.name} for one who was lost")
+            chronicle.add(WorldEvent(world.tick, EventKind.BIRTH,
+                "${child.name} was born to ${a.name} and ${b.name}, named for one they had lost.", child.id, significant = true))
+        } else {
+            chronicle.add(WorldEvent(world.tick, EventKind.BIRTH, "${child.name} was born to ${a.name} and ${b.name}.", child.id, significant = true))
+        }
     }
+
+    /**
+     * The name of a loved one this being has lost, if any — the most-bonded of the dead
+     * they still grieve. Used to carry a name forward into a newborn (remembrance).
+     */
+    internal fun lostLovedName(parent: Being): String? =
+        parent.relationships.values
+            .filter { it.sentiment == Sentiment.GRIEF && it.bond > 40 }
+            .filter { byId(it.otherId)?.alive == false }
+            .maxByOrNull { it.bond }
+            ?.let { byId(it.otherId)?.name }
 
     private fun checkMortality(b: Being) {
         if (b.immortal) {
