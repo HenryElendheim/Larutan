@@ -511,6 +511,16 @@ class Simulation(
                     val skillBonus = 0.75 + 0.5 * b.skills[SkillType.BUILDING]
                     b.drives.change(DriveType.SECURITY, used * 2.0 * skillBonus)
                     b.skills.practice(SkillType.BUILDING, 0.012)
+                    // The work now lasts: it raises a real, shared structure on this ground,
+                    // one anyone can shelter in -> the making of a home (§3.5).
+                    val before = t.built
+                    t.built = (t.built + used * 0.03 * skillBonus).coerceAtMost(1.0)
+                    if (before < 0.5 && t.built >= 0.5) {
+                        record(b, MemoryKind.ACHIEVED, "raising a shelter to last", 0.6, 0.6)
+                        b.hold(BeliefKind.HARD_WORK_PROVIDES, 0.06, "a shelter that stood where they built it")
+                        chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                            "${b.name} raised a shelter that will stand.", b.id, significant = true))
+                    }
                 }
             }
             ActionType.TEND -> tend(b)
@@ -994,6 +1004,9 @@ class Simulation(
             if (t.materialsCapacity > 0 && t.materials < t.materialsCapacity) {
                 t.materials = (t.materials + 0.3).coerceAtMost(t.materialsCapacity)
             }
+            // A built shelter weathers, slowly, if no one keeps it up -> a home has to be
+            // maintained, not just made once.
+            if (t.built > 0.0) t.built = (t.built - 0.0006).coerceAtLeast(0.0)
         }
     }
 

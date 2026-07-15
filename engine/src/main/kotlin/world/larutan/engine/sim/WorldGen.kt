@@ -47,7 +47,7 @@ object WorldGen {
                         Terrain.ROCK -> rng.nextDoubleRange(40.0, 100.0)
                         else -> 0.0
                     },
-                    shelterQuality = when (terrain) {
+                    naturalShelter = when (terrain) {
                         Terrain.SHELTER -> rng.nextDoubleRange(0.6, 1.0)
                         Terrain.FOREST -> rng.nextDoubleRange(0.15, 0.4)
                         Terrain.ROCK -> rng.nextDoubleRange(0.25, 0.5)

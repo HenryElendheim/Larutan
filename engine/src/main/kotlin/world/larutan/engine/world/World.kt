@@ -70,11 +70,17 @@ class Tile(
     var food: Double,
     var water: Double,
     var materials: Double,
-    val shelterQuality: Double,
+    // The cover the land itself offers, fixed by its terrain.
+    val naturalShelter: Double = 0.0,
     // How tended this ground is, 0..1 -> a cultivated plot bears more and comes back
     // faster (§3.5). It creeps back toward wild if no one keeps tending it.
     var cultivation: Double = 0.0,
+    // Shelter raised by hands on top of the natural cover: a lasting structure that
+    // weathers back down if no one keeps it up (§3.5). This is what makes a home a place.
+    var built: Double = 0.0,
 ) {
+    /** Total protection here: the land's own cover plus whatever's been built on it. */
+    val shelterQuality: Double get() = (naturalShelter + built).coerceIn(0.0, 1.0)
     // The most this tile can hold; regrowth climbs back toward it with the season.
     val foodCapacity: Double = when (terrain) {
         Terrain.GRASS -> 60.0
