@@ -370,6 +370,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             atypicalSignature = personality.signature?.phrase,
             foodStore = foodStore.toInt(),
             alive = alive,
+            ailing = ailing,
             immortal = immortal,
             realm = realm?.label,
             deathCause = deathCause,

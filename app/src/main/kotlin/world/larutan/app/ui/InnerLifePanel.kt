@@ -92,6 +92,10 @@ private fun Header(b: FollowedBeing) {
             if (b.immortal) {
                 Text("  ageless", style = MaterialTheme.typography.labelSmall, color = Ember)
             }
+            // A clear sign when they're unwell, so a sickness doesn't pass unnoticed.
+            if (b.ailing) {
+                Text("  unwell", style = MaterialTheme.typography.labelSmall, color = Clay)
+            }
         }
         // For an atypical mind, name *how* it differs — not just that it does.
         b.atypicalSignature?.let { phrase ->

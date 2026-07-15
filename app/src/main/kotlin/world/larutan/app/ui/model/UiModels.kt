@@ -105,6 +105,7 @@ data class FollowedBeing(
     val atypicalSignature: String?, // for an atypical mind, how it differs, in a phrase
     val foodStore: Int,        // what they're carrying put by, so hoarding and sharing read
     val alive: Boolean,
+    val ailing: Boolean,       // unwell right now, so the panel can show it
     val immortal: Boolean,
     val realm: String?,        // set once they've died
     val deathCause: String?,

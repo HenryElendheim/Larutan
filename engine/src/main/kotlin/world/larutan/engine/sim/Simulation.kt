@@ -143,6 +143,8 @@ class Simulation(
         age(b)
         driftDrives(b)
         healthEffects(b)
+        progressIllness(b)
+        maybeFallIll(b)
         updateEmotion(b)
 
         // Sleep through the night once tired; that's when dreams happen.
@@ -205,6 +207,80 @@ class Simulation(
         if (warmth < 8) {
             recordOnce(b, MemoryKind.FROZE, "the cold in ${world.season.label}", -0.8, 0.8)
             b.hold(BeliefKind.WINTERS_ARE_CRUEL, 0.06, "a cold that nearly took them")
+        }
+    }
+
+    // ---- illness and caregiving (§3.5, §4) ----------------------------------
+
+    /**
+     * Sickness may take a being who's run down: gnawing hunger, deep cold, or a body
+     * already failing leaves them open to it. A well-kept life rarely falls ill.
+     */
+    private fun maybeFallIll(b: Being) {
+        if (b.illness > 0.0) return
+        val hunger = b.drives[DriveType.HUNGER]
+        val warmth = b.drives[DriveType.WARMTH]
+        val health = b.drives[DriveType.HEALTH]
+        // Vulnerability rises as the body's margins thin; near zero for the well-fed and warm.
+        var risk = 0.0
+        if (hunger < 30) risk += (30 - hunger) * 0.00020
+        if (warmth < 30) risk += (30 - warmth) * 0.00020
+        if (health < 45) risk += (45 - health) * 0.00016
+        if (b.lifeStage == LifeStage.ELDER || b.lifeStage == LifeStage.INFANT) risk += 0.0008
+        if (risk <= 0.0) return
+        if (rng.chance(risk)) {
+            b.illness = 0.30
+            record(b, MemoryKind.HURT, "a sickness came over them", 0.6, -0.6)
+            chronicle.add(WorldEvent(world.tick, EventKind.HARDSHIP, "${b.name} fell ill.", b.id))
+        }
+    }
+
+    /** An illness runs its course: it drains the body, and eases as the body fights back. */
+    private fun progressIllness(b: Being) {
+        if (b.illness <= 0.0) return
+        // The sickness pulls health down, harder the worse it is.
+        b.drives.change(DriveType.HEALTH, -b.illness * 2.4)
+        // A fed, warm, rested body pushes it back; a run-down one lets it deepen.
+        val fighting = b.drives[DriveType.HUNGER] > 40 && b.drives[DriveType.WARMTH] > 35
+        b.illness = if (fighting) b.illness - 0.010 else b.illness + 0.004
+        b.illness = b.illness.coerceIn(0.0, 1.0)
+        if (b.illness <= 0.0) {
+            record(b, MemoryKind.RESTED, "coming through the sickness", 0.5, 0.5)
+            chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} came through the sickness.", b.id))
+        }
+    }
+
+    /**
+     * Tend someone who's ailing: sit with them, ease the sickness along. It's the
+     * caregiving skill in practice — it grows with the doing — and it weighs to the
+     * good. Warmth and a steadier hand make for better care.
+     */
+    private fun tendSick(carer: Being, patient: Being) {
+        if (!patient.ailing || carer.illness > 0.15) return
+        val skill = carer.skills[SkillType.CAREGIVING]
+        val relief = 0.03 + skill * 0.05 + carer.personality.warmth.coerceAtLeast(0.0) * 0.02
+        patient.illness = (patient.illness - relief).coerceAtLeast(0.0)
+        patient.drives.change(DriveType.HEALTH, 1.0 + skill * 1.5)
+        patient.emotion.feel(EmotionName.GRATITUDE, 0.3)
+        patient.relationshipWith(carer.id).warm(3.0)
+        carer.skills.practice(SkillType.CAREGIVING, 0.02)
+        carer.moralLedger += 0.2
+        carer.relationshipWith(patient.id).warm(2.0)
+        recordOnce(carer, MemoryKind.SOCIALIZED, "tending ${patient.name} while they were ill", 0.3, 0.4)
+    }
+
+    /** Illness can pass between two who are close; a strong body shrugs it off more often. */
+    private fun maybeContagion(a: Being, b: Being) {
+        val sick = when {
+            a.ailing && b.illness <= 0.0 -> b
+            b.ailing && a.illness <= 0.0 -> a
+            else -> return
+        }
+        val resistance = (sick.drives[DriveType.HEALTH] / 100.0).coerceIn(0.0, 1.0)
+        if (rng.chance(0.05 * (1.0 - resistance * 0.7))) {
+            sick.illness = 0.30
+            record(sick, MemoryKind.HURT, "catching a sickness from another", 0.5, -0.5)
+            chronicle.add(WorldEvent(world.tick, EventKind.HARDSHIP, "${sick.name} caught the sickness going round.", sick.id))
         }
     }
 
@@ -448,6 +524,10 @@ class Simulation(
         }
         // Two who are grieving, sitting together, take some of the weight off each other.
         if (isGrieving(b) && isGrieving(other)) comfort(b, other)
+
+        // Sickness moves between the close — and so does the care that answers it.
+        if (other.ailing) tendSick(b, other) else if (b.ailing) tendSick(other, b)
+        maybeContagion(b, other)
         // The old show the young how, and pass on what they believe -> culture begins here (§9).
         teachIfElder(b, other)
         teachIfElder(other, b)
@@ -749,6 +829,7 @@ class Simulation(
             b.drives[DriveType.HUNGER] < 10 -> "hunger"
             b.drives[DriveType.WARMTH] < 10 -> "the cold"
             b.ageYears >= 80 -> "old age"
+            b.illness > 0.4 -> "the sickness"
             else -> "failing health"
         }
         die(b, cause)

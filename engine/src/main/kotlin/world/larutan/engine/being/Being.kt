@@ -60,6 +60,7 @@ class Being(
     // --- transient-ish state the panel reads ---
     var currentAction: String = "waking",
     var foodStore: Double = 0.0,
+    var illness: Double = 0.0,           // 0 is well; climbs when sick, drains health, and can spread
     var deathCause: String? = null,
     // --- the afterlife (§10.7) ---
     var realm: Realm? = null,            // where the soul settled; null while alive
@@ -73,6 +74,9 @@ class Being(
     var lastDream: String? = null,
 ) {
     val lifeStage: LifeStage get() = LifeStage.forAge(ageYears)
+
+    /** Noticeably unwell — enough for it to show and for others to want to tend them. */
+    val ailing: Boolean get() = alive && illness > 0.15
 
     fun relationshipWith(otherId: Int): Relationship =
         relationships.getOrPut(otherId) { Relationship(otherId) }
