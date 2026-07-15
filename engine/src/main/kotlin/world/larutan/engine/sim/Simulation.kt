@@ -932,6 +932,21 @@ class Simulation(
             chronicle.add(WorldEvent(world.tick, EventKind.COPED,
                 "Those who loved ${b.name} drew together in the loss.", mourners.first().id, significant = true))
         }
+
+        // A last teaching: what the dying held most firmly passes, strengthened, to the
+        // one who loved them best -> conviction outliving the life that formed it (§9).
+        passOnConviction(b, mourners)
+    }
+
+    /** The firmest belief of the dead settles more deeply on their closest mourner. */
+    private fun passOnConviction(dead: Being, mourners: List<Being>) {
+        val belief = dead.beliefs.maxByOrNull { it.strength } ?: return
+        if (belief.strength < 0.3) return // only a real conviction carries
+        val heir = mourners.maxByOrNull { it.relationships.getValue(dead.id).bond } ?: return
+        heir.hold(belief.kind, 0.2, "what ${dead.name} believed, left to them")
+        record(heir, MemoryKind.REFLECTED, "holding to what ${dead.name} believed: ${belief.statement}", 0.6, 0.1)
+        chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+            "What ${dead.name} believed lives on in ${heir.name}.", heir.id, significant = true))
     }
 
     /** A last surfaced reflection at death, coloured by how the life weighed out. */
