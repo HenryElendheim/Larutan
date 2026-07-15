@@ -1,5 +1,24 @@
 # Releases
 
+## Larutan v0.1.4
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, the beings become a people. A death is felt together now: those who
+loved someone are drawn closer in the loss, and two who grieve take the weight off
+each other. When spring comes round they gather to mark the year's turn, and come
+away closer for it. A run-down being can fall ill -- sickness that drains them, spreads
+to those nearby, and can be what takes a life -- and a well one can tend the sick,
+easing it and learning the care by the doing. Building lasts now: it raises a real
+shelter on the ground that anyone can come in from the cold to, and that weathers if
+no one keeps it up. And the ends of lives feed the starts: a child born to a grieving
+parent may carry a lost one's name forward, and what the dying held most firmly passes
+to the one who loved them best. Minds that are different show how they differ, in a
+line and a private voice. And you can set a fate on someone's future -- an intention
+that waits, dormant, until their life turns, then comes to pass on its own.
+
 ## Larutan v0.1.3
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
