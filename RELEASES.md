@@ -1,5 +1,18 @@
 # Releases
 
+## Larutan v0.1.5
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, the world has a shadow to go with its warmth. A bond can curdle:
+hurt vented often enough onto the same person hardens into a lasting rift, and while
+it stands, no ordinary meeting warms it again. But a rift isn't forever -- two who
+are estranged, brought back together, may have a forgiving one among them reach across
+and make peace, which is its own small good. And the app has a new look: a fresh icon
+of two beings and the bond between them.
+
 ## Larutan v0.1.4
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
