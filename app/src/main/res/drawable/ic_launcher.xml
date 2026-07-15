@@ -5,13 +5,19 @@
     android:viewportHeight="108">
     <!-- Dark ground. -->
     <path
-        android:fillColor="#0E0F13"
+        android:fillColor="#101544"
         android:pathData="M0,0h108v108h-108z" />
-    <!-- A single being: an outer world, an inner light. -->
+    <!-- Two beings and the bond between them. -->
     <path
-        android:fillColor="#1C2030"
-        android:pathData="M54,26 A28,28 0 1,0 54.01,26 Z" />
+        android:fillColor="#808BFF"
+        android:pathData="M39.1,36.5 a28.1,28.1 0 1,0 56.2,0 a28.1,28.1 0 1,0 -56.2,0 Z" />
     <path
-        android:fillColor="#E8B15C"
-        android:pathData="M54,44 A10,10 0 1,0 54.01,44 Z" />
+        android:fillColor="#808BFF"
+        android:pathData="M12.6,82.9 a16.6,16.6 0 1,0 33.2,0 a16.6,16.6 0 1,0 -33.2,0 Z" />
+    <!-- The tie that runs between them. -->
+    <path
+        android:strokeColor="#9EA6FF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M31,53 L55.4,76.7" />
 </vector>
