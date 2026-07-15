@@ -14,6 +14,7 @@ import world.larutan.engine.being.MemoryEvent
 import world.larutan.engine.being.MemoryKind
 import world.larutan.engine.being.Personality
 import world.larutan.engine.being.Realm
+import world.larutan.engine.being.Relationship
 import world.larutan.engine.being.Sentiment
 import world.larutan.engine.being.SkillType
 import world.larutan.engine.event.Chronicle
@@ -304,6 +305,47 @@ class Simulation(
         recordOnce(carer, MemoryKind.SOCIALIZED, "tending ${patient.name} while they were ill", 0.3, 0.4)
     }
 
+    /**
+     * Hurt, vented often enough onto the same person, can harden into a lasting rift:
+     * the bond curdles to resentment on both sides, and no ordinary meeting warms it
+     * again until it's mended (§4.8).
+     */
+    internal fun maybeRift(b: Being, other: Being) {
+        val rel = b.relationshipWith(other.id)
+        if (rel.sentiment == Sentiment.RESENTMENT || rel.sentiment == Sentiment.RIVALRY) return
+        if (rel.bond < 20.0 && rng.chance(0.3 + b.personality.temper.coerceAtLeast(0.0) * 0.25)) {
+            rel.sentiment = Sentiment.RESENTMENT
+            other.relationshipWith(b.id).sentiment = Sentiment.RESENTMENT
+            record(b, MemoryKind.HURT, "a falling-out with ${other.name}", 0.6, -0.5, other.id)
+            record(other, MemoryKind.HURT, "a falling-out with ${b.name}", 0.6, -0.5, b.id)
+            chronicle.add(WorldEvent(world.tick, EventKind.BOND_BROKEN,
+                "A rift opened between ${b.name} and ${other.name}.", b.id, other.id, significant = true))
+        }
+    }
+
+    /**
+     * Two who are estranged, brought together again: a forgiving heart may reach across
+     * and mend it, and making peace weighs to the good. Otherwise the meeting stays cold.
+     */
+    internal fun maybeReconcile(b: Being, other: Being, rel: Relationship, otherRel: Relationship) {
+        val forgiving = (b.personality.optimism * 0.5 + b.personality.warmth * 0.5).coerceAtLeast(0.0)
+        if (rng.chance((0.05 + forgiving * 0.12).coerceIn(0.02, 0.3))) {
+            rel.sentiment = Sentiment.ACQUAINTANCE
+            otherRel.sentiment = Sentiment.ACQUAINTANCE
+            rel.warm(15.0)
+            otherRel.warm(15.0)
+            b.moralLedger += 0.3
+            other.moralLedger += 0.3
+            b.hold(BeliefKind.OTHERS_CAN_BE_TRUSTED, 0.05, "mending things with ${other.name}")
+            record(b, MemoryKind.SOCIALIZED, "made peace with ${other.name}", 0.6, 0.5, other.id)
+            chronicle.add(WorldEvent(world.tick, EventKind.BOND_FORMED,
+                "${b.name} and ${other.name} made their peace.", b.id, other.id, significant = true))
+        } else {
+            // Still cold: the distance holds, and it wears on them.
+            b.drives.change(DriveType.CONNECTION, -4.0)
+        }
+    }
+
     /** Illness can pass between two who are close; a strong body shrugs it off more often. */
     private fun maybeContagion(a: Being, b: Being) {
         val sick = when {
@@ -550,6 +592,14 @@ class Simulation(
 
         val rel = b.relationshipWith(other.id)
         val otherRel = other.relationshipWith(b.id)
+
+        // Estranged? Then this is no ordinary meeting -> it either thaws or stays cold,
+        // and no bond warms while the rift stands (§4.8).
+        if (rel.sentiment == Sentiment.RESENTMENT || rel.sentiment == Sentiment.RIVALRY) {
+            maybeReconcile(b, other, rel, otherRel)
+            return
+        }
+
         val delta = 2.0 + (b.personality.warmth + other.personality.warmth)
         val wasStranger = rel.sentiment == Sentiment.STRANGER
         rel.warm(delta)
@@ -799,6 +849,7 @@ class Simulation(
                     b.moralLedger -= 0.3 // venting the hurt onto others weighs against them
                     b.emotion.feel(EmotionName.ANGER, 0.1)
                     chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} lashed out at ${other.name}.", b.id, other.id))
+                    maybeRift(b, other)
                 }
             }
             else -> { // adaptive: grieve openly, seek comfort
