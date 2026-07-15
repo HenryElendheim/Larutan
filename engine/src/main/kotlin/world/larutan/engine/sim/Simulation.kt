@@ -71,6 +71,8 @@ class Simulation(
 
         if (world.season != lastSeason) {
             chronicle.add(WorldEvent(world.tick, EventKind.SEASON_TURN, "The season turned to ${world.season.label}.", significant = world.season == Season.WINTER))
+            // Spring's return is the year's renewal -> the people mark it together (§9).
+            if (world.season == Season.SPRING) holdFestival()
             lastSeason = world.season
         }
     }
@@ -132,6 +134,39 @@ class Simulation(
                 }
             }
         }
+    }
+
+    // ---- gathering (§9) -----------------------------------------------------
+
+    /**
+     * The turn of the year, marked together: everyone alive takes a lift from it, and
+     * those gathered near one another warm to each other and come to hold that there is
+     * joy in gathering. The bright counterpart to mourning.
+     */
+    private fun holdFestival() {
+        val folk = living()
+        if (folk.size < 2) return // it takes a few to make a gathering
+        for (b in folk) {
+            b.emotion.valence = (b.emotion.valence + 0.3).coerceAtMost(1.0)
+            b.emotion.feel(EmotionName.JOY, 0.5)
+            b.emotion.distressLoad = (b.emotion.distressLoad - 15.0).coerceAtLeast(0.0)
+            b.drives.change(DriveType.CONNECTION, 25.0)
+            b.hold(BeliefKind.THERE_IS_JOY_IN_GATHERING, 0.08, "a festival at the turn of the year")
+        }
+        // Those close enough to share it come away a little closer.
+        for (i in folk.indices) {
+            for (j in i + 1 until folk.size) {
+                val a = folk[i]
+                val c = folk[j]
+                if (chebyshev(a.x, a.y, c.x, c.y) <= 4) {
+                    a.relationshipWith(c.id).warm(4.0)
+                    c.relationshipWith(a.id).warm(4.0)
+                    record(a, MemoryKind.SOCIALIZED, "the festival with ${c.name}", 0.5, 0.6, c.id)
+                }
+            }
+        }
+        chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+            "Spring came round, and the people gathered to mark the year's turn.", folk.first().id, significant = true))
     }
 
     // ---- per-being update ---------------------------------------------------
