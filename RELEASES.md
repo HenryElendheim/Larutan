@@ -19,6 +19,11 @@ to the one who loved them best. Minds that are different show how they differ, i
 line and a private voice. And you can set a fate on someone's future -- an intention
 that waits, dormant, until their life turns, then comes to pass on its own.
 
+Two more you can reach for: the bold can now hunt -- a riskier, higher-yield way to
+eat than foraging, with a real chance of a wound -- and reversing time is finer now,
+drilling from years down to months, weeks, days, and the time of day to pick the exact
+moment to roll back to.
+
 ## Larutan v0.1.3
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
