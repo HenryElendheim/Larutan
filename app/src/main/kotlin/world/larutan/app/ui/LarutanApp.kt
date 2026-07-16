@@ -137,7 +137,11 @@ private fun WorldBar(state: UiState, onSettings: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Text("Larutan", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            Text(
+                w.settlementName ?: "Larutan",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
             Text(
                 "Year ${w.year} · ${w.season} · day ${w.dayOfSeason} of ${w.daysPerSeason}",
                 style = MaterialTheme.typography.bodyMedium,

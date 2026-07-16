@@ -103,6 +103,7 @@ data class WorldInfo(
     val isNight: Boolean = false,
     val population: Int = 0,
     val harshSpell: Boolean = false, // a severe cold spell is on -> shown as a trial
+    val settlementName: String? = null, // the name of the group's home ground, once settled
 )
 
 data class BeingDot(

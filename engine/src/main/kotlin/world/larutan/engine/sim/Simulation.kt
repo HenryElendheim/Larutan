@@ -1235,6 +1235,32 @@ class Simulation(
             b.foodStore = (b.foodStore * 0.98)
         }
         fadeTheDead()
+        maybeNameSettlement()
+    }
+
+    /**
+     * When shelters gather in one place, the beings have made a settlement -- and a
+     * settled place earns a name that outlives any of them (§9). Named once, kept for good.
+     */
+    internal fun maybeNameSettlement() {
+        if (world.settlementName != null) return
+        val shelters = ArrayList<Pair<Int, Int>>()
+        for (y in 0 until world.height) {
+            for (x in 0 until world.width) {
+                if (world.tileAt(x, y).built > 0.4) shelters += x to y
+            }
+        }
+        if (shelters.size < 3) return
+        // It's a settlement only if the shelters are gathered, not scattered wide.
+        val cx = shelters.map { it.first }.average().toInt()
+        val cy = shelters.map { it.second }.average().toInt()
+        val gathered = shelters.count { chebyshev(it.first, it.second, cx, cy) <= 6 }
+        if (gathered >= 3) {
+            val name = Names.place(rng)
+            world.settlementName = name
+            chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                "The place they had made came to be called $name.", significant = true))
+        }
     }
 
     /**
