@@ -1,5 +1,20 @@
 # Releases
 
+## Larutan v0.1.8
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, you can see the land. The map is no longer an empty grid: water shows
+as cool blue tiles, ground with food on it shows as living green that brightens with
+how much is there, and the shelters the beings raise show as warm rounded marks -- so
+you can finally see where they get water, where food grows, and the homes they make.
+And they stop wasting materials on it: instead of scattering a dozen weak half-shelters,
+a being tops up their own home first, then the nearest standing shelter that can still
+be worked, and only starts a new one when there's nothing to reuse -- so the work goes
+into making one place solid.
+
 ## Larutan v0.1.7
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
