@@ -61,6 +61,9 @@ class Being(
     var currentAction: String = "waking",
     var foodStore: Double = 0.0,
     var illness: Double = 0.0,           // 0 is well; climbs when sick, drains health, and can spread
+    var homeX: Int = -1,                 // the place they've come to call home, or -1 for none
+    var homeY: Int = -1,
+    var reputation: Double = 0.0,        // how the group regards them, -1 (ill-regarded) .. +1 (well-loved)
     var deathCause: String? = null,
     // --- the afterlife (§10.7) ---
     var realm: Realm? = null,            // where the soul settled; null while alive
@@ -77,6 +80,9 @@ class Being(
 
     /** Noticeably unwell — enough for it to show and for others to want to tend them. */
     val ailing: Boolean get() = alive && illness > 0.15
+
+    /** True once they've a place to call home. */
+    val hasHome: Boolean get() = homeX >= 0 && homeY >= 0
 
     fun relationshipWith(otherId: Int): Relationship =
         relationships.getOrPut(otherId) { Relationship(otherId) }

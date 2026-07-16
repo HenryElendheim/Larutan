@@ -111,7 +111,10 @@ class World(
     val tiles: List<Tile>,
     var tick: Long = 0,
     var weather: Weather = Weather.CLEAR,
+    var harshSpell: Int = 0, // days left of a severe cold spell -> a trial the shelter must weather
 ) {
+    val inHarshSpell: Boolean get() = harshSpell > 0
+
     fun tileAt(x: Int, y: Int): Tile = tiles[y * width + x]
     fun inBounds(x: Int, y: Int): Boolean = x in 0 until width && y in 0 until height
 

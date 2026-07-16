@@ -170,6 +170,30 @@ class Simulation(
             "Spring came round, and the people gathered to mark the year's turn.", folk.first().id, significant = true))
     }
 
+    /**
+     * The pull of a place. Being home is its own quiet good; and a home lost to the
+     * weather is felt, once, before it's let go (§4.8).
+     */
+    internal fun feelForHome(b: Being) {
+        if (!b.hasHome) return
+        val home = world.tileAt(b.homeX, b.homeY)
+        if (home.built < 0.1) {
+            // What they made has gone back to the ground.
+            b.emotion.feel(EmotionName.GRIEF, 0.2)
+            b.emotion.distressLoad += 6.0
+            b.hold(BeliefKind.THE_WORLD_TAKES_WHAT_YOU_LOVE, 0.06, "a home that weathered away")
+            record(b, MemoryKind.LOST, "the home they'd made, gone back to the ground", 0.6, -0.5)
+            chronicle.add(WorldEvent(world.tick, EventKind.HARDSHIP, "${b.name}'s home has weathered away.", b.id))
+            b.homeX = -1; b.homeY = -1
+            return
+        }
+        if (chebyshev(b.x, b.y, b.homeX, b.homeY) <= 1) {
+            b.drives.change(DriveType.SECURITY, 8.0)
+            b.emotion.valence = (b.emotion.valence + 0.05).coerceAtMost(1.0)
+            if (rng.chance(0.02)) record(b, MemoryKind.RESTED, "a quiet hour at home", 0.3, 0.4)
+        }
+    }
+
     // ---- per-being update ---------------------------------------------------
 
     private fun updateBeing(b: Being, startOfNight: Boolean) {
@@ -198,6 +222,7 @@ class Simulation(
         val action = chooseAction(b)
         execute(action, b)
         advanceGoal(b, action)
+        feelForHome(b)
         cope(b)
         maybeDiscoverCultivation(b)
         maybeThink(b)
@@ -228,7 +253,7 @@ class Simulation(
         b.drives.change(DriveType.WARMTH, -warmthLoss)
     }
 
-    private fun healthEffects(b: Being) {
+    internal fun healthEffects(b: Being) {
         val hunger = b.drives[DriveType.HUNGER]
         val warmth = b.drives[DriveType.WARMTH]
         var dh = 0.0
@@ -237,6 +262,15 @@ class Simulation(
         if (hunger > 45 && warmth > 35) dh += 0.6 // recover when fed and warm enough
         // Elders decline slowly no matter what.
         if (b.lifeStage.label == "elder") dh -= 0.05
+        // A hard spell is where the shelter you built and the food you put by pay off:
+        // the exposed and empty-handed suffer for it, the sheltered and stocked ride it out.
+        if (world.inHarshSpell) {
+            val sheltered = world.tileAt(b.x, b.y).shelterQuality > 0.4
+            val stocked = b.foodStore > 1.0
+            if (!sheltered) dh -= 0.9
+            if (!stocked && hunger < 40) dh -= 0.6
+            if (sheltered && stocked) dh += 0.3 // safe and provided, they weather it fine
+        }
         b.drives.change(DriveType.HEALTH, dh)
 
         if (hunger < 8) recordOnce(b, MemoryKind.STARVED, "going hungry in ${world.season.label}", -0.8, 0.8)
@@ -301,8 +335,14 @@ class Simulation(
         patient.relationshipWith(carer.id).warm(3.0)
         carer.skills.practice(SkillType.CAREGIVING, 0.02)
         carer.moralLedger += 0.2
+        regard(carer, 0.04) // tending the sick is seen, and remembered
         carer.relationshipWith(patient.id).warm(2.0)
         recordOnce(carer, MemoryKind.SOCIALIZED, "tending ${patient.name} while they were ill", 0.3, 0.4)
+    }
+
+    /** Shift how the group regards a being, from what they're seen to do (§4.8). */
+    private fun regard(b: Being, amount: Double) {
+        b.reputation = (b.reputation + amount).coerceIn(-1.0, 1.0)
     }
 
     /**
@@ -316,6 +356,7 @@ class Simulation(
         if (rel.bond < 20.0 && rng.chance(0.3 + b.personality.temper.coerceAtLeast(0.0) * 0.25)) {
             rel.sentiment = Sentiment.RESENTMENT
             other.relationshipWith(b.id).sentiment = Sentiment.RESENTMENT
+            regard(b, -0.06) // the one who broke it is seen to have
             record(b, MemoryKind.HURT, "a falling-out with ${other.name}", 0.6, -0.5, other.id)
             record(other, MemoryKind.HURT, "a falling-out with ${b.name}", 0.6, -0.5, b.id)
             chronicle.add(WorldEvent(world.tick, EventKind.BOND_BROKEN,
@@ -336,6 +377,7 @@ class Simulation(
             otherRel.warm(15.0)
             b.moralLedger += 0.3
             other.moralLedger += 0.3
+            regard(b, 0.05); regard(other, 0.03) // making peace lifts them both in the group's eyes
             b.hold(BeliefKind.OTHERS_CAN_BE_TRUSTED, 0.05, "mending things with ${other.name}")
             record(b, MemoryKind.SOCIALIZED, "made peace with ${other.name}", 0.6, 0.5, other.id)
             chronicle.add(WorldEvent(world.tick, EventKind.BOND_FORMED,
@@ -532,7 +574,12 @@ class Simulation(
                 b.drives.change(DriveType.ENERGY, -3.0)
             }
             ActionType.WANDER -> {
-                stepRandom(b)
+                // Those with a home drift back toward it now and then; the rest just roam.
+                if (b.hasHome && chebyshev(b.x, b.y, b.homeX, b.homeY) > 4 && rng.chance(0.5)) {
+                    stepToward(b, b.homeX, b.homeY)
+                } else {
+                    stepRandom(b)
+                }
                 b.drives.change(DriveType.CURIOSITY, 6.0)
                 b.drives.change(DriveType.AUTONOMY, 5.0)
             }
@@ -562,6 +609,10 @@ class Simulation(
                         b.hold(BeliefKind.HARD_WORK_PROVIDES, 0.06, "a shelter that stood where they built it")
                         chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
                             "${b.name} raised a shelter that will stand.", b.id, significant = true))
+                        // The place you build becomes the place you belong, if you had none.
+                        if (!b.hasHome) { b.homeX = b.x; b.homeY = b.y }
+                        regard(b, 0.05) // raising something that lasts is well thought of
+
                     }
                 }
             }
@@ -600,10 +651,12 @@ class Simulation(
             return
         }
 
-        val delta = 2.0 + (b.personality.warmth + other.personality.warmth)
+        // How warmly they take to each other is coloured by standing: a well-regarded
+        // soul is met openly, an ill-regarded one warily (§4.8).
+        val base = 2.0 + (b.personality.warmth + other.personality.warmth)
         val wasStranger = rel.sentiment == Sentiment.STRANGER
-        rel.warm(delta)
-        otherRel.warm(delta)
+        rel.warm(base + other.reputation * 1.5)
+        otherRel.warm(base + b.reputation * 1.5)
         b.drives.change(DriveType.CONNECTION, 24.0)
         b.drives.change(DriveType.INTIMACY, 10.0)
         other.drives.change(DriveType.CONNECTION, 18.0)
@@ -681,6 +734,7 @@ class Simulation(
         giver.relationshipWith(taker.id).warm(3.0)
         taker.relationshipWith(giver.id).warm(3.0)
         giver.moralLedger += 0.05 // feeding another weighs to the good
+        regard(giver, 0.03) // and generosity is noticed
         taker.hold(BeliefKind.OTHERS_CAN_BE_TRUSTED, 0.05, "being fed when hungry")
         record(giver, MemoryKind.HELPED, "shared food with ${taker.name}", 0.3, 0.4, taker.id)
         record(taker, MemoryKind.COMFORTED, "fed by ${giver.name} when hungry", 0.3, 0.5, giver.id)
@@ -847,6 +901,7 @@ class Simulation(
                 if (other != null) {
                     b.relationshipWith(other.id).cool(6.0)
                     b.moralLedger -= 0.3 // venting the hurt onto others weighs against them
+                    regard(b, -0.03) // and it's seen
                     b.emotion.feel(EmotionName.ANGER, 0.1)
                     chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} lashed out at ${other.name}.", b.id, other.id))
                     maybeRift(b, other)
@@ -904,6 +959,9 @@ class Simulation(
         child.lineage.parents += b.id
         a.lineage.children += child.id
         b.lineage.children += child.id
+        // A child belongs where its parents do -> home passes down a family (§4.8).
+        val parentHome = a.takeIf { it.hasHome } ?: b.takeIf { it.hasHome }
+        if (parentHome != null) { child.homeX = parentHome.homeX; child.homeY = parentHome.homeY }
         beings += child
         a.moralLedger += 0.4 // bringing up a life is one of the heavier good weights
         b.moralLedger += 0.4
@@ -1049,6 +1107,25 @@ class Simulation(
 
     private fun rollWeather() {
         if (world.hourOfDay != 6) return // reroll once a day, at dawn
+
+        // A hard spell is a trial that runs for days: while it holds, the cold bites deep
+        // and only shelter and stores carry you through (§3.5).
+        if (world.inHarshSpell) {
+            world.harshSpell--
+            world.weather = Weather.COLD_SNAP
+            if (world.harshSpell == 0) {
+                chronicle.add(WorldEvent(world.tick, EventKind.WEATHER, "The hard spell broke, and the cold let go.", significant = true))
+            }
+            return
+        }
+        // Deep in the cold seasons, a hard spell can descend.
+        if ((world.season == Season.WINTER || world.season == Season.AUTUMN) && rng.chance(0.06)) {
+            world.harshSpell = 2 + rng.nextInt(3) // two to four days
+            world.weather = Weather.COLD_SNAP
+            chronicle.add(WorldEvent(world.tick, EventKind.WEATHER, "A hard spell set in -- the cold bit deep.", significant = true))
+            return
+        }
+
         val roll = rng.nextDouble()
         world.weather = when (world.season) {
             Season.WINTER -> when {
