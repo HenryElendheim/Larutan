@@ -1076,6 +1076,30 @@ class Simulation(
         // A last teaching: what the dying held most firmly passes, strengthened, to the
         // one who loved them best -> conviction outliving the life that formed it (§9).
         passOnConviction(b, mourners)
+
+        // When a figure the group looked to dies, the whole group feels it, and someone
+        // may rise to the space they leave (§9).
+        if (b.eminent) succeed(b)
+    }
+
+    /** The death of a figure the group looked to: felt by all, and a space someone may fill. */
+    private fun succeed(dead: Being) {
+        for (m in living()) {
+            m.emotion.feel(EmotionName.GRIEF, 0.2)
+            m.hold(BeliefKind.THE_WORLD_TAKES_WHAT_YOU_LOVE, 0.05, "losing the one they looked to")
+        }
+        chronicle.add(WorldEvent(world.tick, EventKind.DEATH,
+            "The one they looked to, ${dead.name}, is gone.", dead.id, significant = true))
+        // The group's regard turns to the most-esteemed grown soul still living.
+        val successor = living()
+            .filter { it.lifeStage == LifeStage.ADULT || it.lifeStage == LifeStage.ELDER }
+            .maxByOrNull { it.reputation }
+        if (successor != null && successor.reputation > 0.2) {
+            regard(successor, 0.25)
+            record(successor, MemoryKind.REFLECTED, "the others turning to them, after ${dead.name}", 0.6, 0.2)
+            chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                "With ${dead.name} gone, the others begin to look to ${successor.name}.", successor.id, significant = true))
+        }
     }
 
     /** The firmest belief of the dead settles more deeply on their closest mourner. */
