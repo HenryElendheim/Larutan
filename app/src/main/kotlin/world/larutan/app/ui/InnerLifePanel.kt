@@ -96,6 +96,13 @@ private fun Header(b: FollowedBeing) {
             if (b.ailing) {
                 Text("  unwell", style = MaterialTheme.typography.labelSmall, color = Clay)
             }
+            // At home, and how the group regards them.
+            if (b.atHome) {
+                Text("  home", style = MaterialTheme.typography.labelSmall, color = Moss)
+            }
+            b.standing?.let {
+                Text("  $it", style = MaterialTheme.typography.labelSmall, color = Tide)
+            }
         }
         // For an atypical mind, name *how* it differs — not just that it does.
         b.atypicalSignature?.let { phrase ->

@@ -16,8 +16,19 @@ enum class RosterFilter(val label: String) {
     DEAD("The dead"),
 }
 
+/**
+ * Player preferences: how the app reads and how much it interrupts. Kept small and
+ * plain -- accessibility, and a way to blitz without the world easing off for you.
+ */
+data class Settings(
+    val slowForMoments: Boolean = true,   // ease the speed on a big moment; off = blitz straight past
+    val showMomentBanners: Boolean = true,// surface the moment banner at all
+    val largerText: Boolean = false,      // scale text up for easier reading
+)
+
 data class UiState(
     val world: WorldInfo = WorldInfo(),
+    val settings: Settings = Settings(),
     val beings: List<BeingDot> = emptyList(),
     val roster: List<RosterEntry> = emptyList(),
     val rosterFilter: RosterFilter = RosterFilter.LIVING,
@@ -80,6 +91,7 @@ data class WorldInfo(
     val weather: String = "clear",
     val isNight: Boolean = false,
     val population: Int = 0,
+    val harshSpell: Boolean = false, // a severe cold spell is on -> shown as a trial
 )
 
 data class BeingDot(
@@ -106,6 +118,8 @@ data class FollowedBeing(
     val foodStore: Int,        // what they're carrying put by, so hoarding and sharing read
     val alive: Boolean,
     val ailing: Boolean,       // unwell right now, so the panel can show it
+    val atHome: Boolean,       // currently at the place they call home
+    val standing: String?,     // how the group regards them, in a word, or null if unremarkable
     val immortal: Boolean,
     val realm: String?,        // set once they've died
     val deathCause: String?,

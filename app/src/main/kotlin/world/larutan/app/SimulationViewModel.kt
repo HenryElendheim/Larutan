@@ -21,6 +21,7 @@ import world.larutan.app.ui.model.MomentView
 import world.larutan.app.ui.model.RelationView
 import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.RosterFilter
+import world.larutan.app.ui.model.Settings
 import world.larutan.app.ui.model.Speed
 import world.larutan.app.ui.model.TimelineMomentView
 import world.larutan.app.ui.model.UiState
@@ -64,6 +65,10 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
 
     // The world survives being closed: continuity is the point.
     private val saveFile = File(app.filesDir, "world.json")
+
+    // Player preferences live in their own small store, apart from the world.
+    private val prefs = app.getSharedPreferences("larutan_settings", android.content.Context.MODE_PRIVATE)
+    private var settings = loadSettings()
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -186,13 +191,39 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             sig.size > seenSignificant -> {
                 val fresh = sig.subList(seenSignificant, sig.size)
                 seenSignificant = sig.size
-                currentMoment = fresh.last()
-                if (fresh.any { it.kind.isPayoff } && (speed == Speed.WATCH || speed == Speed.DRIFT)) {
+                // Only put a moment on the banner if the player wants them.
+                if (settings.showMomentBanners) currentMoment = fresh.last()
+                // Ease off a fast run for a payoff beat -- unless they've chosen to blitz.
+                if (settings.slowForMoments &&
+                    fresh.any { it.kind.isPayoff } && (speed == Speed.WATCH || speed == Speed.DRIFT)
+                ) {
                     speed = Speed.REFLECT // the loop reads speed each turn, so it eases on its own
                 }
             }
             sig.size < seenSignificant -> seenSignificant = sig.size // chronicle trimmed; re-sync
         }
+    }
+
+    // ---- settings -----------------------------------------------------------
+
+    /** Apply a new set of preferences and remember them. */
+    fun updateSettings(new: Settings) {
+        settings = new
+        prefs.edit()
+            .putBoolean("slowForMoments", new.slowForMoments)
+            .putBoolean("showMomentBanners", new.showMomentBanners)
+            .putBoolean("largerText", new.largerText)
+            .apply()
+        publish()
+    }
+
+    private fun loadSettings(): Settings {
+        val d = Settings()
+        return Settings(
+            slowForMoments = prefs.getBoolean("slowForMoments", d.slowForMoments),
+            showMomentBanners = prefs.getBoolean("showMomentBanners", d.showMomentBanners),
+            largerText = prefs.getBoolean("largerText", d.largerText),
+        )
     }
 
     /** Send the soul you're following back into a new life, and follow the newborn (§10.7). */
@@ -280,6 +311,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         if (followed != null) followedId = followed.id
 
         _state.value = UiState(
+            settings = settings,
             world = WorldInfo(
                 width = world.width,
                 height = world.height,
@@ -291,6 +323,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 weather = world.weather.label,
                 isNight = world.isNight,
                 population = sim.living().size,
+                harshSpell = world.inHarshSpell,
             ),
             beings = sim.beings.map { it.toDot(followed?.id) },
             roster = buildRoster(followed?.id),
@@ -371,6 +404,8 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             foodStore = foodStore.toInt(),
             alive = alive,
             ailing = ailing,
+            atHome = hasHome && kotlin.math.max(kotlin.math.abs(x - homeX), kotlin.math.abs(y - homeY)) <= 1,
+            standing = standingLabel(this),
             immortal = immortal,
             realm = realm?.label,
             deathCause = deathCause,
@@ -410,6 +445,20 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 .filter { it.subjectId == id && !it.fulfilled }
                 .map { it.sentence(name) },
         )
+    }
+
+    /** How the group's regard reads, in a word — or null when there's nothing to say. */
+    private fun standingLabel(b: Being): String? {
+        val rep = b.reputation
+        val healer = b.skills[SkillType.CAREGIVING] > 0.4
+        return when {
+            rep >= 0.5 && healer -> "a healer"
+            rep >= 0.5 -> "well-loved"
+            rep >= 0.2 -> "well thought of"
+            rep <= -0.4 -> "ill-regarded"
+            rep <= -0.15 -> "looked at warily"
+            else -> null
+        }
     }
 
     /** A friendly name for a snapshot's time of day, for the rewind picker's last level. */

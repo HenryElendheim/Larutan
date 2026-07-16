@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,15 +25,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import world.larutan.app.SimulationViewModel
 import world.larutan.app.ui.model.MomentView
 import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.RosterFilter
+import world.larutan.app.ui.model.Settings
 import world.larutan.app.ui.model.TimelineMomentView
 import world.larutan.app.ui.model.UiState
+import world.larutan.app.ui.theme.Clay
 import world.larutan.app.ui.theme.Ember
 
 /**
@@ -42,7 +47,13 @@ import world.larutan.app.ui.theme.Ember
 @Composable
 fun LarutanApp(vm: SimulationViewModel) {
     val state: UiState by vm.state.collectAsStateWithLifecycle()
+    var settingsOpen by remember { mutableStateOf(false) }
 
+    // Larger text scales every sp size at once, so it lifts the whole app together.
+    val base = LocalDensity.current
+    val scaled = Density(base.density, base.fontScale * if (state.settings.largerText) 1.3f else 1f)
+
+    CompositionLocalProvider(LocalDensity provides scaled) {
     Column(
         Modifier
             .fillMaxSize()
@@ -52,7 +63,10 @@ fun LarutanApp(vm: SimulationViewModel) {
             .padding(top = 40.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        WorldBar(state)
+        WorldBar(state, onSettings = { settingsOpen = !settingsOpen })
+        if (settingsOpen) {
+            SettingsPanel(state.settings, onChange = vm::updateSettings)
+        }
         state.moment?.let {
             MomentBanner(it, onOpen = vm::openMoment, onDismiss = vm::dismissMoment)
         }
@@ -110,10 +124,11 @@ fun LarutanApp(vm: SimulationViewModel) {
             Chronicle(state.chronicle)
         }
     }
+    }
 }
 
 @Composable
-private fun WorldBar(state: UiState) {
+private fun WorldBar(state: UiState, onSettings: () -> Unit) {
     val w = state.world
     Row(
         Modifier.fillMaxWidth(),
@@ -130,16 +145,89 @@ private fun WorldBar(state: UiState) {
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                "${w.timeOfDay} · ${w.weather}",
+                if (w.harshSpell) "${w.timeOfDay} · ${w.weather} · a hard spell" else "${w.timeOfDay} · ${w.weather}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = if (w.harshSpell) Clay else MaterialTheme.colorScheme.onBackground,
             )
-            Text(
-                "${w.population} living",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${w.population} living",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "  Settings",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onSettings() }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun SettingsPanel(settings: Settings, onChange: (Settings) -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            "SETTINGS",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium,
+        )
+        SettingRow(
+            "Slow down for big moments",
+            "Off lets you blitz -- births, deaths and the rest won't ease the speed for you.",
+            settings.slowForMoments,
+        ) { onChange(settings.copy(slowForMoments = it)) }
+        SettingRow(
+            "Show moment banners",
+            "The little note when something worth seeing happens.",
+            settings.showMomentBanners,
+        ) { onChange(settings.copy(showMomentBanners = it)) }
+        SettingRow(
+            "Larger text",
+            "Scales everything up a little for easier reading.",
+            settings.largerText,
+        ) { onChange(settings.copy(largerText = it)) }
+    }
+}
+
+@Composable
+private fun SettingRow(title: String, detail: String, on: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable { onToggle(!on) }
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+            Text(detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        // A plain on/off pill, filled when on -- readable without relying on colour alone.
+        Text(
+            if (on) "On" else "Off",
+            style = MaterialTheme.typography.labelLarge,
+            color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+        )
     }
 }
 
