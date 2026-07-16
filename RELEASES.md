@@ -1,5 +1,20 @@
 # Releases
 
+## Larutan v0.1.7
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, the group grows leaders. Standing built up and held by someone grown
+now makes them a figure the others look to -- not a title anyone grants, but something
+that emerges from how they're regarded and can be lost if that regard falls away. What
+such a figure believes carries further when they teach, and their presence steadies
+whoever's near. And when one the group looked to dies, the whole group feels it, not
+only those closest -- and the regard they held turns toward the most-esteemed soul
+still living, who begins to be looked to in their place. Leadership that outlives the
+leader. Follow someone and the panel tells you where they stand: one the others look to.
+
 ## Larutan v0.1.6
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
