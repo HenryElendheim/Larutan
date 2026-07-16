@@ -64,6 +64,7 @@ class Being(
     var homeX: Int = -1,                 // the place they've come to call home, or -1 for none
     var homeY: Int = -1,
     var reputation: Double = 0.0,        // how the group regards them, -1 (ill-regarded) .. +1 (well-loved)
+    var eminent: Boolean = false,        // a figure the group has come to look to, from standing and years
     var deathCause: String? = null,
     // --- the afterlife (§10.7) ---
     var realm: Realm? = null,            // where the soul settled; null while alive

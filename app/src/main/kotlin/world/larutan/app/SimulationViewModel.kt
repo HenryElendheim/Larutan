@@ -452,6 +452,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         val rep = b.reputation
         val healer = b.skills[SkillType.CAREGIVING] > 0.4
         return when {
+            b.eminent -> "one the others look to"
             rep >= 0.5 && healer -> "a healer"
             rep >= 0.5 -> "well-loved"
             rep >= 0.2 -> "well thought of"

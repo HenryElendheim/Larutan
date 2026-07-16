@@ -194,6 +194,22 @@ class Simulation(
         }
     }
 
+    /**
+     * Standing, held long enough by someone grown, makes a figure the group looks to (§9).
+     * It isn't a title anyone grants -- it emerges, and it can be lost if regard falls away.
+     */
+    internal fun recognizeEminence(b: Being) {
+        val grown = b.lifeStage == LifeStage.ADULT || b.lifeStage == LifeStage.ELDER
+        if (!b.eminent && grown && b.reputation >= 0.6) {
+            b.eminent = true
+            record(b, MemoryKind.ACHIEVED, "the others have come to look to them", 0.7, 0.6)
+            chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                "The others have come to look to ${b.name}.", b.id, significant = true))
+        } else if (b.eminent && b.reputation < 0.35) {
+            b.eminent = false // regard fell away, and with it the standing
+        }
+    }
+
     // ---- per-being update ---------------------------------------------------
 
     private fun updateBeing(b: Being, startOfNight: Boolean) {
@@ -223,6 +239,7 @@ class Simulation(
         execute(action, b)
         advanceGoal(b, action)
         feelForHome(b)
+        recognizeEminence(b)
         cope(b)
         maybeDiscoverCultivation(b)
         maybeThink(b)
@@ -673,6 +690,9 @@ class Simulation(
         // Two who are grieving, sitting together, take some of the weight off each other.
         if (isGrieving(b) && isGrieving(other)) comfort(b, other)
 
+        // A figure the group looks to steadies whoever's with them.
+        sway(b, other); sway(other, b)
+
         // Sickness moves between the close — and so does the care that answers it.
         if (other.ailing) tendSick(b, other) else if (b.ailing) tendSick(other, b)
         maybeContagion(b, other)
@@ -831,10 +851,21 @@ class Simulation(
 
         val belief = teacher.beliefs.maxByOrNull { it.strength } ?: return
         val isNew = student.beliefs.none { it.kind == belief.kind }
-        student.hold(belief.kind, 0.15, "what an elder taught")
+        // What a figure the group looks to holds carries further than an ordinary elder's word.
+        student.hold(belief.kind, if (teacher.eminent) 0.3 else 0.15, "what an elder taught")
         if (isNew && rng.chance(0.3)) {
             chronicle.add(WorldEvent(world.tick, EventKind.BOND_FORMED, "${teacher.name} taught ${student.name} that ${belief.statement}.", teacher.id, student.id))
         }
+    }
+
+    /**
+     * Being near a figure the group looks to steadies the ordinary: a little of their
+     * conviction rubs off, and their presence eases the day (§9).
+     */
+    private fun sway(figure: Being, other: Being) {
+        if (!figure.eminent || other.eminent) return
+        other.emotion.distressLoad = (other.emotion.distressLoad - 4.0).coerceAtLeast(0.0)
+        figure.beliefs.maxByOrNull { it.strength }?.let { other.hold(it.kind, 0.03, "being near ${figure.name}") }
     }
 
     // ---- goals --------------------------------------------------------------
