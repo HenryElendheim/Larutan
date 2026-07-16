@@ -1,5 +1,26 @@
 # Releases
 
+## Larutan v0.1.6
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, the world grows a sense of place and of standing, and the app gets
+a settings menu. A being now belongs somewhere -- the spot they raise a shelter, or
+the one their parents held -- and being home settles them, while a home lost to the
+weather is felt before it's let go. Deep in the cold seasons a hard spell can set in
+for days, and it's where the shelter you built and the food you put by pay off: the
+exposed suffer, the sheltered and stocked ride it out. And the group comes to regard
+each being by what they're seen to do -- generosity, care and making peace lift you,
+lashing out and breaking bonds lower you -- which colours how warmly others first take
+to you; the panel reads it back as a healer, well-loved, or looked at warily.
+
+The new settings menu, reached from the top bar, holds what you'd want: larger text
+for easier reading, a switch to hide the moment banners, and -- the big one -- a way
+to turn off the world slowing down for big moments, so you can blitz a long stretch
+without births and deaths easing the speed back for you. Your choices are remembered.
+
 ## Larutan v0.1.5
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
