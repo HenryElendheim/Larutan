@@ -73,6 +73,7 @@ fun LarutanApp(vm: SimulationViewModel) {
         WorldView(
             world = state.world,
             beings = state.beings,
+            map = state.map,
             onSelect = vm::follow,
         )
         TimeControls(

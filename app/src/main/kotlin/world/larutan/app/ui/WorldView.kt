@@ -23,28 +23,32 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import world.larutan.app.ui.model.BeingDot
+import world.larutan.app.ui.model.MapView
 import world.larutan.app.ui.model.WorldInfo
 import world.larutan.app.ui.theme.Ember
 import world.larutan.app.ui.theme.Line
 import kotlin.math.abs
 
 /**
- * The map. Beings are simple dots — position and colour carry the information,
- * exactly as the plan intends: minimal now, richer later on the same hooks. Tap a
- * dot to choose whom to follow; pinch or use the buttons to zoom in and out and
- * drag to move around once you're in close.
+ * The map. The land shows through — water, ground with food on it, and the shelters
+ * the beings raise — and the beings are dots on top of it, position and colour
+ * carrying who they are. Tap a dot to choose whom to follow; pinch or use the buttons
+ * to zoom in and out and drag to move around once you're in close.
  */
 @Composable
 fun WorldView(
     world: WorldInfo,
     beings: List<BeingDot>,
+    map: MapView,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -99,12 +103,41 @@ fun WorldView(
             val oy = pan.y
             val nightWash = if (world.isNight) 0.5f else 1f
 
+            // The land first, under everything: water, then ground with food on it.
+            for (c in map.water) {
+                drawRect(
+                    WaterBlue.copy(alpha = (0.22f + 0.45f * c.amount) * nightWash),
+                    topLeft = Offset(ox + c.x * cell, oy + c.y * cell),
+                    size = Size(cell, cell),
+                )
+            }
+            for (c in map.food) {
+                drawRect(
+                    GrowGreen.copy(alpha = (0.10f + 0.40f * c.amount) * nightWash),
+                    topLeft = Offset(ox + c.x * cell, oy + c.y * cell),
+                    size = Size(cell, cell),
+                )
+            }
+
             // A faint grid so the space reads as a place, not a void.
             val gridColor = Line.copy(alpha = 0.25f * nightWash)
             for (i in 0..world.width) {
                 val p = i * cell
                 drawLine(gridColor, Offset(ox + p, oy), Offset(ox + p, oy + world.height * cell), strokeWidth = 1f)
                 drawLine(gridColor, Offset(ox, oy + p), Offset(ox + world.width * cell, oy + p), strokeWidth = 1f)
+            }
+
+            // Shelters: a warm rounded mark, square so it never reads as a being (they're dots).
+            for (c in map.shelters) {
+                val s = cell * 0.52f
+                val cx = ox + (c.x + 0.5f) * cell
+                val cy = oy + (c.y + 0.5f) * cell
+                drawRoundRect(
+                    Ember.copy(alpha = (0.30f + 0.5f * c.amount) * nightWash),
+                    topLeft = Offset(cx - s / 2f, cy - s / 2f),
+                    size = Size(s, s),
+                    cornerRadius = CornerRadius(cell * 0.14f, cell * 0.14f),
+                )
             }
 
             for (b in beings) {
@@ -152,6 +185,10 @@ private fun ZoomButton(label: String, onClick: () -> Unit) {
             .padding(horizontal = 14.dp, vertical = 6.dp),
     )
 }
+
+// The land's own colours: cool water, living green, and shelter takes the warm Ember.
+private val WaterBlue = Color(0xFF3E6E97)
+private val GrowGreen = Color(0xFF6FA06F)
 
 /** Hue is identity (stable per being); brightness leans a little on how they feel. */
 private fun beingColor(hue: Float, valence: Float): Color {

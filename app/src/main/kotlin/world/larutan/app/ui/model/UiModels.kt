@@ -26,8 +26,19 @@ data class Settings(
     val largerText: Boolean = false,      // scale text up for easier reading
 )
 
+/** One tile worth drawing on the map, with how much of the thing is there (0..1). */
+data class MapCell(val x: Int, val y: Int, val amount: Float)
+
+/** The land under the beings: where water sits, where food grows, and the shelters raised. */
+data class MapView(
+    val water: List<MapCell> = emptyList(),
+    val food: List<MapCell> = emptyList(),
+    val shelters: List<MapCell> = emptyList(),
+)
+
 data class UiState(
     val world: WorldInfo = WorldInfo(),
+    val map: MapView = MapView(),
     val settings: Settings = Settings(),
     val beings: List<BeingDot> = emptyList(),
     val roster: List<RosterEntry> = emptyList(),

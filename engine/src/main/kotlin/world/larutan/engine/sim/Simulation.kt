@@ -608,7 +608,7 @@ class Simulation(
                 if (rng.chance(0.05)) record(b, MemoryKind.EXPLORED, "ground no one I know has walked", 0.4, 0.3)
             }
             ActionType.BUILD -> {
-                val tile = nearestMaterials(b)
+                val tile = chooseBuildTarget(b)
                 if (tile != null && stepToward(b, tile.first, tile.second)) {
                     val t = world.tileAt(b.x, b.y)
                     val used = minOf(t.materials, 8.0)
@@ -1307,6 +1307,21 @@ class Simulation(
     private fun nearestWater(b: Being): Pair<Int, Int>? = nearestTile(b) { it.terrain == Terrain.WATER }
     private fun nearestMaterials(b: Being): Pair<Int, Int>? = nearestTile(b) { it.materials > 2.0 }
     private fun nearestShelter(b: Being): Pair<Int, Int>? = nearestTile(b) { it.shelterQuality > 0.4 }
+
+    /**
+     * Where to put the next hour's building. Rather than scatter new half-shelters and
+     * burn materials, a being tops up their own home first, then the nearest standing
+     * shelter that can still be worked, and only starts fresh when there's nothing to
+     * reuse (§3.5).
+     */
+    internal fun chooseBuildTarget(b: Being): Pair<Int, Int>? {
+        if (b.hasHome) {
+            val h = world.tileAt(b.homeX, b.homeY)
+            if (h.built < 0.95 && h.materials > 2.0) return b.homeX to b.homeY
+        }
+        nearestTile(b) { it.shelterQuality in 0.2..0.95 && it.materials > 2.0 }?.let { return it }
+        return nearestMaterials(b)
+    }
 
     private inline fun nearestTile(b: Being, predicate: (world.larutan.engine.world.Tile) -> Boolean): Pair<Int, Int>? {
         val r = forageSearchRadius()

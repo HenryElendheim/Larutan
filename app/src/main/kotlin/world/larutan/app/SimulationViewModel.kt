@@ -17,6 +17,8 @@ import world.larutan.app.ui.model.DriveBar
 import world.larutan.app.ui.model.FollowedBeing
 import world.larutan.app.ui.model.GoalView
 import world.larutan.app.ui.model.GodAction
+import world.larutan.app.ui.model.MapCell
+import world.larutan.app.ui.model.MapView
 import world.larutan.app.ui.model.MomentView
 import world.larutan.app.ui.model.RelationView
 import world.larutan.app.ui.model.RosterEntry
@@ -40,6 +42,7 @@ import world.larutan.engine.sim.Timeline
 import world.larutan.engine.sim.WorldConfig
 import world.larutan.engine.sim.WorldGen
 import world.larutan.engine.world.Season
+import world.larutan.engine.world.Terrain
 import world.larutan.engine.world.World
 import java.io.File
 
@@ -325,6 +328,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 population = sim.living().size,
                 harshSpell = world.inHarshSpell,
             ),
+            map = buildMapView(),
             beings = sim.beings.map { it.toDot(followed?.id) },
             roster = buildRoster(followed?.id),
             rosterFilter = rosterFilter,
@@ -445,6 +449,32 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 .filter { it.subjectId == id && !it.fulfilled }
                 .map { it.sentence(name) },
         )
+    }
+
+    /**
+     * The land, summarised for the map: only the tiles worth drawing -- water, ground
+     * with food on it, and standing shelter -- so the world reads as a place with
+     * resources, not an empty grid.
+     */
+    private fun buildMapView(): MapView {
+        val w = sim.world
+        val water = ArrayList<MapCell>()
+        val food = ArrayList<MapCell>()
+        val shelters = ArrayList<MapCell>()
+        for (y in 0 until w.height) {
+            for (x in 0 until w.width) {
+                val t = w.tileAt(x, y)
+                when {
+                    t.terrain == Terrain.WATER ->
+                        water += MapCell(x, y, (t.water / 100.0).toFloat().coerceIn(0.35f, 1f))
+                    t.foodCapacity > 0.0 && t.food > 6.0 ->
+                        food += MapCell(x, y, (t.food / t.foodCapacity).toFloat().coerceIn(0f, 1f))
+                }
+                // Shelter can sit on the same ground as food, so it's its own pass.
+                if (t.shelterQuality > 0.25) shelters += MapCell(x, y, t.shelterQuality.toFloat())
+            }
+        }
+        return MapView(water = water, food = food, shelters = shelters)
     }
 
     /** How the group's regard reads, in a word — or null when there's nothing to say. */
