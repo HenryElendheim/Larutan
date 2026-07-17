@@ -4,17 +4,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -25,13 +31,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import world.larutan.app.SimulationViewModel
+import world.larutan.app.ui.model.FollowedBeing
 import world.larutan.app.ui.model.MomentView
 import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.RosterFilter
@@ -45,16 +52,54 @@ import world.larutan.app.ui.theme.Ember
  * The whole screen: the map up top, the clock, and — the point of it all — the
  * inner life of whoever you're following, scrolling below.
  */
+/** Which page of the app is up. Settings and the chronicle each get their own now. */
+private enum class Screen { MAIN, SETTINGS, CHRONICLE, EDIT }
+
 @Composable
 fun LarutanApp(vm: SimulationViewModel) {
     val state: UiState by vm.state.collectAsStateWithLifecycle()
-    var settingsOpen by remember { mutableStateOf(false) }
+    var screen by remember { mutableStateOf(Screen.MAIN) }
 
     // Larger text scales every sp size at once, so it lifts the whole app together.
     val base = LocalDensity.current
     val scaled = Density(base.density, base.fontScale * if (state.settings.largerText) 1.3f else 1f)
 
     CompositionLocalProvider(LocalDensity provides scaled) {
+        when (screen) {
+            Screen.MAIN -> MainScreen(
+                state, vm,
+                onSettings = { screen = Screen.SETTINGS },
+                onChronicle = { screen = Screen.CHRONICLE },
+                onEdit = { screen = Screen.EDIT },
+            )
+            Screen.SETTINGS -> SettingsScreen(state.settings, onChange = vm::updateSettings, onBack = { screen = Screen.MAIN })
+            Screen.CHRONICLE -> ChronicleScreen(state.chronicle, onBack = { screen = Screen.MAIN })
+            Screen.EDIT -> {
+                val f = state.followed
+                if (f != null && f.alive) {
+                    EditScreen(f, vm, onBack = { screen = Screen.MAIN })
+                } else {
+                    PageScaffold("Nothing to shape", onBack = { screen = Screen.MAIN }) {
+                        Text(
+                            "There's no living being to shape just now.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MainScreen(
+    state: UiState,
+    vm: SimulationViewModel,
+    onSettings: () -> Unit,
+    onChronicle: () -> Unit,
+    onEdit: () -> Unit,
+) {
     Column(
         Modifier
             .fillMaxSize()
@@ -64,19 +109,7 @@ fun LarutanApp(vm: SimulationViewModel) {
             .padding(top = 40.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        WorldBar(state, onSettings = { settingsOpen = !settingsOpen })
-        // The group's founding story, quietly held above the world it's about.
-        state.world.foundingMyth?.let { myth ->
-            Text(
-                myth,
-                style = MaterialTheme.typography.bodySmall,
-                fontStyle = FontStyle.Italic,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (settingsOpen) {
-            SettingsPanel(state.settings, onChange = vm::updateSettings)
-        }
+        WorldBar(state, onSettings = onSettings, onChronicle = onChronicle)
         state.moment?.let {
             MomentBanner(it, onOpen = vm::openMoment, onDismiss = vm::dismissMoment)
         }
@@ -116,6 +149,10 @@ fun LarutanApp(vm: SimulationViewModel) {
 
         val followed = state.followed
         if (followed != null) {
+            // The god's editing bench for whoever you're following.
+            if (followed.alive) {
+                NavPill("Shape ${followed.name}", onEdit)
+            }
             InnerLifePanel(
                 followed,
                 onGod = vm::invoke,
@@ -130,57 +167,204 @@ fun LarutanApp(vm: SimulationViewModel) {
                 modifier = Modifier.padding(vertical = 24.dp),
             )
         }
-
-        if (state.chronicle.isNotEmpty()) {
-            Chronicle(state.chronicle)
-        }
-    }
     }
 }
 
 @Composable
-private fun WorldBar(state: UiState, onSettings: () -> Unit) {
+private fun WorldBar(state: UiState, onSettings: () -> Unit, onChronicle: () -> Unit) {
     val w = state.world
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text(
-                w.settlementName ?: "Larutan",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                "Year ${w.year} · ${w.season} · day ${w.dayOfSeason} of ${w.daysPerSeason}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                if (w.harshSpell) "${w.timeOfDay} · ${w.weather} · a hard spell" else "${w.timeOfDay} · ${w.weather}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (w.harshSpell) Clay else MaterialTheme.colorScheme.onBackground,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column {
+                Text("Larutan", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    "Year ${w.year} · ${w.season} · day ${w.dayOfSeason} of ${w.daysPerSeason}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    if (w.harshSpell) "${w.timeOfDay} · ${w.weather} · a hard spell" else "${w.timeOfDay} · ${w.weather}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (w.harshSpell) Clay else MaterialTheme.colorScheme.onBackground,
+                )
                 Text(
                     "${w.population} living",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+        // The two other pages live one tap away.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NavPill("Chronicle", onChronicle)
+            NavPill("Settings", onSettings)
+        }
+    }
+}
+
+/** A small tappable pill used for moving between pages. */
+@Composable
+private fun NavPill(label: String, onClick: () -> Unit) {
+    Text(
+        label,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+/** A page header with a back arrow-free "Back" pill and a title. */
+@Composable
+private fun PageHeader(title: String, onBack: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        NavPill("Back", onBack)
+        Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** A full page shell: a back header, then the page's content, scrolling. */
+@Composable
+private fun PageScaffold(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(top = 40.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        PageHeader(title, onBack)
+        content()
+    }
+}
+
+@Composable
+private fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit) {
+    PageScaffold("Settings", onBack) {
+        SettingsPanel(settings, onChange)
+    }
+}
+
+@Composable
+private fun ChronicleScreen(entries: List<String>, onBack: () -> Unit) {
+    PageScaffold("Chronicle", onBack) {
+        if (entries.isEmpty()) {
+            Text(
+                "Nothing has happened worth setting down yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            entries.forEach { line ->
                 Text(
-                    "  Settings",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onSettings() }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    line,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(vertical = 2.dp),
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun EditScreen(b: FollowedBeing, vm: SimulationViewModel, onBack: () -> Unit) {
+    PageScaffold("Shape ${b.name}", onBack) {
+        Text(
+            "True godhood: remake them as you please. Changes take at once.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        // --- Name -------------------------------------------------------------
+        EditLabel("Name")
+        var nameField by remember(b.id) { mutableStateOf(b.name) }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(
+                value = nameField,
+                onValueChange = { nameField = it },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            NavPill("Rename") { vm.editName(nameField) }
+        }
+
+        // --- Colour -----------------------------------------------------------
+        EditLabel("Colour")
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(Color.hsv(b.hue % 360f, 0.42f, 0.8f)),
+            )
+            Slider(
+                value = b.hue.coerceIn(0f, 360f),
+                onValueChange = { vm.editHue(it) },
+                valueRange = 0f..360f,
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        // --- Size -------------------------------------------------------------
+        LabeledSlider("Size", b.size, 0.4f..2.5f, { vm.editSize(it) }, "${(b.size * 100).toInt()}%")
+
+        // --- Age --------------------------------------------------------------
+        LabeledSlider(
+            "Age", b.ageYears.toFloat(), 0f..90f, { vm.editAge(it) },
+            "${b.ageYears} years · ${b.lifeStage}",
+        )
+
+        // --- Stats ------------------------------------------------------------
+        EditLabel("Their needs, set outright")
+        b.drives.forEach { d ->
+            LabeledSlider(
+                d.label.replaceFirstChar { it.uppercase() },
+                d.value.coerceIn(0f, 1f),
+                0f..1f,
+                { vm.editDrive(d.label, it) },
+                "${(d.value * 100).toInt()}",
+            )
+        }
+    }
+}
+
+@Composable
+private fun EditLabel(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(top = 6.dp),
+    )
+}
+
+@Composable
+private fun LabeledSlider(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    onChange: (Float) -> Unit,
+    valueText: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+            Text(valueText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Slider(value = value, onValueChange = onChange, valueRange = range)
     }
 }
 
@@ -449,17 +633,3 @@ private fun TimelineStrip(moments: List<TimelineMomentView>, onRewind: (Long) ->
     }
 }
 
-@Composable
-private fun Chronicle(entries: List<String>) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            "THE CHRONICLE",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Medium,
-        )
-        entries.forEach {
-            Text("— $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}

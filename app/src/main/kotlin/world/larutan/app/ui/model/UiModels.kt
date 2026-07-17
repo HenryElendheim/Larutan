@@ -116,6 +116,7 @@ data class BeingDot(
     val alive: Boolean,
     val selected: Boolean,
     val immortal: Boolean = false, // drawn with a ring so the ageless read at a glance
+    val size: Float = 1f,          // how large the dot draws, a god may change it
 )
 
 data class FollowedBeing(
@@ -128,6 +129,8 @@ data class FollowedBeing(
     val mood: String,
     val atypical: Boolean,
     val atypicalSignature: String?, // for an atypical mind, how it differs, in a phrase
+    val hue: Float,                 // their dot colour, for the god editor
+    val size: Float,                // their dot size, for the god editor
     val foodStore: Int,        // what they're carrying put by, so hoarding and sharing read
     val alive: Boolean,
     val ailing: Boolean,       // unwell right now, so the panel can show it

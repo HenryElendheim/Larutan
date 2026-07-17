@@ -38,7 +38,7 @@ data class Lineage(
 @Serializable
 class Being(
     val id: Int,
-    val name: String,
+    var name: String, // a god may rename them
     var x: Int,
     var y: Int,
     val personality: Personality,
@@ -55,8 +55,10 @@ class Being(
     var alive: Boolean = true,
     var immortal: Boolean = false, // a god's gift: halts aging and holds death away
     var birthTick: Long = 0,
-    /** A stable seed for the being's dot colour in the 2D view. */
-    val appearanceSeed: Int = 0,
+    /** The being's dot colour in the 2D view (a hue seed) — a god may recolour them. */
+    var appearanceSeed: Int = 0,
+    /** How large the being's dot draws, 1.0 being ordinary — a god may resize them. */
+    var size: Double = 1.0,
     // --- transient-ish state the panel reads ---
     var currentAction: String = "waking",
     var foodStore: Double = 0.0,

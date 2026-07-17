@@ -255,6 +255,39 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         publish()
     }
 
+    // ---- true godhood: edit the being you're following directly ----------------
+
+    /** Rename the being you're following. Blank keeps the old name. */
+    fun editName(name: String) {
+        sim.byId(followedId)?.let { if (name.isNotBlank()) it.name = name.trim().take(24) }
+        publish()
+    }
+
+    /** Recolour them: hue is 0..360 around the wheel. */
+    fun editHue(hue: Float) {
+        sim.byId(followedId)?.let { it.appearanceSeed = hue.toInt().coerceIn(0, 359) }
+        publish()
+    }
+
+    /** Resize their dot on the map, 1.0 being ordinary. */
+    fun editSize(size: Float) {
+        sim.byId(followedId)?.let { it.size = size.toDouble().coerceIn(0.4, 2.5) }
+        publish()
+    }
+
+    /** Age or de-age them by setting their years outright (life stage follows from it). */
+    fun editAge(years: Float) {
+        sim.byId(followedId)?.let { it.ageYears = years.toDouble().coerceIn(0.0, 90.0) }
+        publish()
+    }
+
+    /** Set one of their drives directly, 0..1, instead of nudging it with a blessing. */
+    fun editDrive(label: String, value: Float) {
+        val type = DriveType.entries.firstOrNull { it.label == label } ?: return
+        sim.byId(followedId)?.let { it.drives[type] = (value * 100f).toDouble().coerceIn(0.0, 100.0) }
+        publish()
+    }
+
     /**
      * Set a fate on the being you're following: an intention that waits until their
      * life meets the trigger, then comes to pass on its own (§10.6). The two halves
@@ -354,7 +387,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                     isNow = m.tick == world.tick,
                 )
             },
-            chronicle = sim.chronicle.significant(8).map { it.text }.reversed(),
+            chronicle = sim.chronicle.significant(80).map { it.text }.reversed(),
         )
     }
 
@@ -389,6 +422,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         alive = alive,
         selected = id == selectedId,
         immortal = immortal,
+        size = size.toFloat(),
     )
 
     private fun Being.toFollowed(): FollowedBeing {
@@ -407,6 +441,8 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             mood = emotion.moodLabel(),
             atypical = personality.isAtypical,
             atypicalSignature = personality.signature?.phrase,
+            hue = appearanceSeed.toFloat(),
+            size = size.toFloat(),
             foodStore = foodStore.toInt(),
             alive = alive,
             ailing = ailing,

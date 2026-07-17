@@ -148,14 +148,15 @@ fun WorldView(
                     continue
                 }
                 val color = beingColor(b.hue, b.valence).copy(alpha = nightWash.coerceAtLeast(0.7f))
+                val dotR = cell * 0.34f * b.size.coerceIn(0.4f, 2.5f)
                 if (b.selected) {
-                    drawCircle(Ember, radius = cell * 0.62f, center = Offset(cx, cy), style = Stroke(width = cell * 0.14f))
+                    drawCircle(Ember, radius = dotR + cell * 0.28f, center = Offset(cx, cy), style = Stroke(width = cell * 0.14f))
                 }
                 // A soft gold ring marks the ageless, so you can pick them out on the map.
                 if (b.immortal) {
-                    drawCircle(Color(0xFFE7D08A), radius = cell * 0.5f, center = Offset(cx, cy), style = Stroke(width = cell * 0.09f))
+                    drawCircle(Color(0xFFE7D08A), radius = dotR + cell * 0.16f, center = Offset(cx, cy), style = Stroke(width = cell * 0.09f))
                 }
-                drawCircle(color, radius = cell * 0.34f, center = Offset(cx, cy))
+                drawCircle(color, radius = dotR, center = Offset(cx, cy))
             }
         }
 
