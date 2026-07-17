@@ -168,6 +168,14 @@ class Simulation(
         }
         chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
             "Spring came round, and the people gathered to mark the year's turn.", folk.first().id, significant = true))
+
+        // The founding story gets retold at the gathering, and the retelling firms up
+        // what it taught them: that they carry each other (§9).
+        if (world.foundingMyth != null) {
+            folk.forEach { it.hold(BeliefKind.WE_CARRY_EACH_OTHER, 0.05, "the story retold at the gathering") }
+            chronicle.add(WorldEvent(world.tick, EventKind.COPED,
+                "The old story was told again, of how they came to be a people.", folk.first().id))
+        }
     }
 
     /**
@@ -1170,6 +1178,13 @@ class Simulation(
             world.weather = Weather.COLD_SNAP
             if (world.harshSpell == 0) {
                 chronicle.add(WorldEvent(world.tick, EventKind.WEATHER, "The hard spell broke, and the cold let go.", significant = true))
+                // Coming through the first hard winter together is the kind of thing a
+                // people tells stories about -> a founding myth, if they've none yet (§9).
+                if (world.foundingMyth == null && living().size >= 2) {
+                    world.foundingMyth = "In the first hard winter, when the cold bit deepest, they held together and came through."
+                    chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                        "A story took hold among them: of the winter they survived as one.", significant = true))
+                }
             }
             return
         }
@@ -1260,6 +1275,10 @@ class Simulation(
             world.settlementName = name
             chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
                 "The place they had made came to be called $name.", significant = true))
+            // If they've no founding story yet, the making of the place becomes it (§9).
+            if (world.foundingMyth == null) {
+                world.foundingMyth = "It began when they gathered on this ground and made $name their own."
+            }
         }
     }
 

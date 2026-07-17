@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -64,6 +65,15 @@ fun LarutanApp(vm: SimulationViewModel) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         WorldBar(state, onSettings = { settingsOpen = !settingsOpen })
+        // The group's founding story, quietly held above the world it's about.
+        state.world.foundingMyth?.let { myth ->
+            Text(
+                myth,
+                style = MaterialTheme.typography.bodySmall,
+                fontStyle = FontStyle.Italic,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         if (settingsOpen) {
             SettingsPanel(state.settings, onChange = vm::updateSettings)
         }

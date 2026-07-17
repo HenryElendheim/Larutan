@@ -328,6 +328,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 population = sim.living().size,
                 harshSpell = world.inHarshSpell,
                 settlementName = world.settlementName,
+                foundingMyth = world.foundingMyth,
             ),
             map = buildMapView(),
             beings = sim.beings.map { it.toDot(followed?.id) },

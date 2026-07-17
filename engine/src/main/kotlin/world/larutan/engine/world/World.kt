@@ -113,6 +113,7 @@ class World(
     var weather: Weather = Weather.CLEAR,
     var harshSpell: Int = 0, // days left of a severe cold spell -> a trial the shelter must weather
     var settlementName: String? = null, // the name the group gives its home ground, once it settles
+    var foundingMyth: String? = null, // the group's origin story, retold and shaping what they believe
 ) {
     val inHarshSpell: Boolean get() = harshSpell > 0
 
