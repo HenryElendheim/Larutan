@@ -1,5 +1,19 @@
 # Releases
 
+## Larutan v2.0
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+This one is about true godhood, and giving the app room to breathe. Follow a being and
+you can now shape them on a page of their own: rename them, recolour them anywhere round
+the wheel, resize them on the map, age or de-age them outright, and set each of their
+needs with a slider -- not just nudge them with a blessing. Settings and the chronicle
+each have their own page now, a tap from the top bar, with the whole history there to
+read instead of the last few lines. And the title at the top is Larutan again, always,
+with no subtitle -- the world's own name and story stay in the world, where they belong.
+
 ## Larutan v0.1.9
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
