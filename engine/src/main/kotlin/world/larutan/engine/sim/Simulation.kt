@@ -1344,6 +1344,35 @@ class Simulation(
         return child
     }
 
+    // ---- a god's making and unmaking (§10) ----------------------------------
+
+    /**
+     * A god calls a wholly new being into the world -- a fresh soul, its own nature,
+     * arriving grown enough to live at once. You can then shape it however you please.
+     */
+    fun spawn(x: Int = world.width / 2, y: Int = world.height / 2): Being {
+        val being = Being(
+            id = nextId++,
+            name = Names.random(rng),
+            x = x.coerceIn(0, world.width - 1),
+            y = y.coerceIn(0, world.height - 1),
+            personality = Personality.random(rng),
+            generation = 1,
+            ageYears = 18.0, // arrives a young adult, ready to act
+            birthTick = world.tick,
+            appearanceSeed = rng.nextInt(360),
+        )
+        beings += being
+        chronicle.add(WorldEvent(world.tick, EventKind.BIRTH,
+            "${being.name} was called into the world, made whole.", being.id, significant = true))
+        return being
+    }
+
+    /** A god ends a life outright. It dies as any would, and is weighed and settled. */
+    fun strikeDown(id: Int) {
+        byId(id)?.takeIf { it.alive }?.let { die(it, "a god's hand") }
+    }
+
     // ---- perception helpers -------------------------------------------------
 
     private fun forageSearchRadius(): Int = 6

@@ -147,6 +147,17 @@ class God(private val sim: Simulation) {
     /** The fates still waiting on a being (for the panel to show what's been set). */
     fun fatesFor(id: Int): List<Fate> = sim.fates.filter { it.subjectId == id && !it.fulfilled }
 
+    // ---- making and unmaking (§10) ------------------------------------------
+
+    /** Call a new being into the world; returns its id, so you can follow it at once. */
+    fun create(): Int = sim.spawn().id
+
+    /** End a life outright. Does nothing if there's no such living being. */
+    fun smite(id: Int) {
+        val b = alive(id) ?: return
+        sim.strikeDown(b.id)
+    }
+
     // ---- the afterlife ------------------------------------------------------
 
     /**

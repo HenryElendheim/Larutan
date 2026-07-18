@@ -109,7 +109,7 @@ private fun MainScreen(
             .padding(top = 40.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        WorldBar(state, onSettings = onSettings, onChronicle = onChronicle)
+        WorldBar(state, onSettings = onSettings, onChronicle = onChronicle, onSpawn = vm::spawnBeing)
         state.moment?.let {
             MomentBanner(it, onOpen = vm::openMoment, onDismiss = vm::dismissMoment)
         }
@@ -171,7 +171,7 @@ private fun MainScreen(
 }
 
 @Composable
-private fun WorldBar(state: UiState, onSettings: () -> Unit, onChronicle: () -> Unit) {
+private fun WorldBar(state: UiState, onSettings: () -> Unit, onChronicle: () -> Unit, onSpawn: () -> Unit) {
     val w = state.world
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
@@ -200,8 +200,9 @@ private fun WorldBar(state: UiState, onSettings: () -> Unit, onChronicle: () -> 
                 )
             }
         }
-        // The two other pages live one tap away.
+        // The two other pages, and a god's power to make a new being, one tap away.
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NavPill("New being", onSpawn)
             NavPill("Chronicle", onChronicle)
             NavPill("Settings", onSettings)
         }
@@ -337,6 +338,19 @@ private fun EditScreen(b: FollowedBeing, vm: SimulationViewModel, onBack: () -> 
                 "${(d.value * 100).toInt()}",
             )
         }
+
+        // --- The final power --------------------------------------------------
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Strike down",
+            style = MaterialTheme.typography.labelLarge,
+            color = Color(0xFF1B1116), // near-black, so it reads on the clay
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(Clay)
+                .clickable { vm.smiteFollowed(); onBack() }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
     }
 }
 

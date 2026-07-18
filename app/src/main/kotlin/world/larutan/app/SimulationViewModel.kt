@@ -255,6 +255,21 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
         publish()
     }
 
+    /** Call a new being into the world and follow it straight away. */
+    fun spawnBeing() {
+        followedId = god.create()
+        rosterFilter = RosterFilter.LIVING
+        realmFilter = null
+        timeline.maybeRecord(sim)
+        publish()
+    }
+
+    /** End the life of the being you're following. */
+    fun smiteFollowed() {
+        god.smite(followedId)
+        publish()
+    }
+
     // ---- true godhood: edit the being you're following directly ----------------
 
     /** Rename the being you're following. Blank keeps the old name. */
