@@ -1,5 +1,17 @@
 # Releases
 
+## Larutan v0.2.2
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, the god's hand grows surer. Long-press the map to call a new being
+into being right where you held, instead of always at the centre. A row over all the
+living pours a blessing on everyone at once -- feed all, warm all, bless all. And an
+Undo appears whenever you've a divine act to take back -- a spawn, a strike, a blessing,
+a fate -- restoring the world to just before it, up to a dozen deep.
+
 ## Larutan v0.2.1
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
