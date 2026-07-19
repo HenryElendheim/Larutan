@@ -72,10 +72,26 @@ class Simulation(
 
         if (world.season != lastSeason) {
             chronicle.add(WorldEvent(world.tick, EventKind.SEASON_TURN, "The season turned to ${world.season.label}.", significant = world.season == Season.WINTER))
-            // Spring's return is the year's renewal -> the people mark it together (§9).
-            if (world.season == Season.SPRING) holdFestival()
+            // Spring's return is the year's renewal -> the people mark it, and the year's
+            // fortune is cast: some are generous, some lean (§3.5, §9).
+            if (world.season == Season.SPRING) {
+                holdFestival()
+                rollYearBounty()
+            }
             lastSeason = world.season
         }
+    }
+
+    /** Cast the year's fortune: how generous the land will be until the next spring. */
+    internal fun rollYearBounty() {
+        world.yearBounty = rng.nextDoubleRange(0.6, 1.4)
+        val word = when {
+            world.yearBounty >= 1.2 -> "a generous one -- the land looks set to give"
+            world.yearBounty <= 0.8 -> "a lean one -- there'll be less to go round"
+            else -> "an ordinary one"
+        }
+        chronicle.add(WorldEvent(world.tick, EventKind.SEASON_TURN,
+            "The year turned, and it looked to be $word.", significant = world.yearBounty <= 0.8))
     }
 
     fun run(ticks: Int) { repeat(ticks) { if (living().isNotEmpty()) step() } }
@@ -1218,12 +1234,13 @@ class Simulation(
         }
     }
 
-    private fun regrowResources() {
+    internal fun regrowResources() {
         // Cheap: touch a slice of tiles each tick so a big map costs little.
         val total = world.tiles.size
         val slice = (total / World.TICKS_PER_DAY).coerceAtLeast(1)
         val start = ((world.tick % World.TICKS_PER_DAY) * slice).toInt() % total
-        val yield = world.season.foodYield
+        // The season's yield, lifted or lowered by whether it's a year of plenty or want.
+        val yield = world.season.foodYield * world.yearBounty
         for (i in 0 until slice) {
             val t = world.tiles[(start + i) % total]
             if (t.foodCapacity > 0) {
