@@ -1373,6 +1373,28 @@ class Simulation(
         byId(id)?.takeIf { it.alive }?.let { die(it, "a god's hand") }
     }
 
+    // ---- reshaping the land (§10) -------------------------------------------
+
+    /** Make ground bear food: turn it to grass if it can't grow, then fill it. */
+    fun growFoodAt(x: Int, y: Int) {
+        val t = world.tileAt(x, y)
+        if (t.foodCapacity <= 0.0) t.terrain = Terrain.GRASS
+        t.food = t.effectiveFoodCapacity
+    }
+
+    /** Open water where you point, to drink from. */
+    fun makeWaterAt(x: Int, y: Int) {
+        val t = world.tileAt(x, y)
+        t.terrain = Terrain.WATER
+        t.water = 100.0
+        t.built = 0.0 // water carries no shelter
+    }
+
+    /** Raise a shelter on the spot outright, a god's hand where hands would take days. */
+    fun raiseShelterAt(x: Int, y: Int) {
+        world.tileAt(x, y).built = (world.tileAt(x, y).built + 0.6).coerceAtMost(1.0)
+    }
+
     // ---- perception helpers -------------------------------------------------
 
     private fun forageSearchRadius(): Int = 6

@@ -66,7 +66,7 @@ enum class Weather(val label: String) {
 
 @Serializable
 class Tile(
-    val terrain: Terrain,
+    var terrain: Terrain, // a god may reshape the land itself
     var food: Double,
     var water: Double,
     var materials: Double,
@@ -82,7 +82,8 @@ class Tile(
     /** Total protection here: the land's own cover plus whatever's been built on it. */
     val shelterQuality: Double get() = (naturalShelter + built).coerceIn(0.0, 1.0)
     // The most this tile can hold; regrowth climbs back toward it with the season.
-    val foodCapacity: Double = when (terrain) {
+    // Derived from terrain, so reshaping the land updates what it can bear.
+    val foodCapacity: Double get() = when (terrain) {
         Terrain.GRASS -> 60.0
         Terrain.FOREST -> 100.0
         else -> 0.0
@@ -90,8 +91,8 @@ class Tile(
 
     /** What a tended plot can hold: tending lifts the ceiling by up to four-fifths. */
     val effectiveFoodCapacity: Double get() = foodCapacity * (1.0 + cultivation * 0.8)
-    val waterCapacity: Double = if (terrain == Terrain.WATER) 100.0 else 0.0
-    val materialsCapacity: Double = when (terrain) {
+    val waterCapacity: Double get() = if (terrain == Terrain.WATER) 100.0 else 0.0
+    val materialsCapacity: Double get() = when (terrain) {
         Terrain.FOREST -> 80.0
         Terrain.ROCK -> 100.0
         else -> 0.0

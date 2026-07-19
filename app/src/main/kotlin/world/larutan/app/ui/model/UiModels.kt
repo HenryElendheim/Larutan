@@ -10,6 +10,14 @@ enum class Speed(val label: String, val tickDelayMillis: Long) {
     DRIFT("Drift", 80);        // let a long stretch of life run
 }
 
+/** What a long-press on the map drops: a being, or a reshaping of the land itself. */
+enum class PlaceMode(val label: String) {
+    BEING("a being"),
+    FOOD("food"),
+    WATER("water"),
+    SHELTER("shelter"),
+}
+
 /** Whether the roster shows the living or the dead, and — for the dead — which realm. */
 enum class RosterFilter(val label: String) {
     LIVING("Living"),

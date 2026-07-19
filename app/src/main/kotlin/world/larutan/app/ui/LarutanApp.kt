@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import world.larutan.app.SimulationViewModel
 import world.larutan.app.ui.model.FollowedBeing
 import world.larutan.app.ui.model.MomentView
+import world.larutan.app.ui.model.PlaceMode
 import world.larutan.app.ui.model.RosterEntry
 import world.larutan.app.ui.model.RosterFilter
 import world.larutan.app.ui.model.Settings
@@ -100,6 +101,7 @@ private fun MainScreen(
     onChronicle: () -> Unit,
     onEdit: () -> Unit,
 ) {
+    var placeMode by remember { mutableStateOf(PlaceMode.BEING) }
     Column(
         Modifier
             .fillMaxSize()
@@ -124,10 +126,23 @@ private fun MainScreen(
             beings = state.beings,
             map = state.map,
             onSelect = vm::follow,
-            onPlace = vm::spawnBeingAt,
+            onPlace = { x, y ->
+                when (placeMode) {
+                    PlaceMode.BEING -> vm.spawnBeingAt(x, y)
+                    PlaceMode.FOOD -> vm.growFoodAt(x, y)
+                    PlaceMode.WATER -> vm.makeWaterAt(x, y)
+                    PlaceMode.SHELTER -> vm.raiseShelterAt(x, y)
+                }
+            },
         )
+        // Pick what a long-press on the map lays down -- a being, or a reshaping of the land.
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PlaceMode.entries.forEach { mode ->
+                Chip(label = mode.label, selected = mode == placeMode) { placeMode = mode }
+            }
+        }
         Text(
-            "Long-press the map to make a new being there.",
+            "Long-press the map to place ${placeMode.label}.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -167,6 +167,12 @@ class God(private val sim: Simulation) {
     fun provideAll() = sim.living().forEach { provide(it.id) }
     fun warmAll() = sim.living().forEach { warm(it.id) }
 
+    // ---- reshaping the land -------------------------------------------------
+
+    fun growFood(x: Int, y: Int) = sim.growFoodAt(x, y)
+    fun makeWater(x: Int, y: Int) = sim.makeWaterAt(x, y)
+    fun raiseShelter(x: Int, y: Int) = sim.raiseShelterAt(x, y)
+
     // ---- the afterlife ------------------------------------------------------
 
     /**

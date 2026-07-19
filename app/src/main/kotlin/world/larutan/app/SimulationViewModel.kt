@@ -293,6 +293,12 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
     fun provideAll() { snapshotForUndo(); god.provideAll(); publish() }
     fun warmAll() { snapshotForUndo(); god.warmAll(); publish() }
 
+    // ---- reshape the land at a tapped spot -------------------------------------
+
+    fun growFoodAt(x: Int, y: Int) { snapshotForUndo(); god.growFood(x, y); publish() }
+    fun makeWaterAt(x: Int, y: Int) { snapshotForUndo(); god.makeWater(x, y); publish() }
+    fun raiseShelterAt(x: Int, y: Int) { snapshotForUndo(); god.raiseShelter(x, y); publish() }
+
     // ---- undo the last god act -------------------------------------------------
 
     /** Snapshot the world right before a divine act, so it can be taken back. */
