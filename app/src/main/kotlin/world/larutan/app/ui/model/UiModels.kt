@@ -49,6 +49,7 @@ data class UiState(
     val moment: MomentView? = null,
     val timeline: List<TimelineMomentView> = emptyList(),
     val chronicle: List<String> = emptyList(),
+    val canUndo: Boolean = false, // whether there's a god act to take back
 )
 
 /** A meaningful thing that just happened, surfaced so you don't miss it (§10.4). */

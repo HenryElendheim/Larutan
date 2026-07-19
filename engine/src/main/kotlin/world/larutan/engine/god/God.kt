@@ -152,11 +152,20 @@ class God(private val sim: Simulation) {
     /** Call a new being into the world; returns its id, so you can follow it at once. */
     fun create(): Int = sim.spawn().id
 
+    /** Call a new being into the world at a chosen spot. */
+    fun createAt(x: Int, y: Int): Int = sim.spawn(x, y).id
+
     /** End a life outright. Does nothing if there's no such living being. */
     fun smite(id: Int) {
         val b = alive(id) ?: return
         sim.strikeDown(b.id)
     }
+
+    // ---- over all of them at once -------------------------------------------
+
+    fun blessAll() = sim.living().forEach { bless(it.id) }
+    fun provideAll() = sim.living().forEach { provide(it.id) }
+    fun warmAll() = sim.living().forEach { warm(it.id) }
 
     // ---- the afterlife ------------------------------------------------------
 

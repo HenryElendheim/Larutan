@@ -61,6 +61,9 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
     // A rolling history of the world, so time can be rolled back (§10.5). Session-only.
     private val timeline = Timeline()
 
+    // A short stack of snapshots taken just before each god act, so they can be undone.
+    private val undoStack = ArrayDeque<String>()
+
     // Significant-moment surfacing (§10.4): how many significant events we've already
     // shown, and the latest one still up on the banner.
     private var seenSignificant = 0
@@ -231,6 +234,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Send the soul you're following back into a new life, and follow the newborn (§10.7). */
     fun reincarnateFollowed() {
+        snapshotForUndo()
         val newId = god.reincarnate(followedId) ?: return
         followedId = newId
         rosterFilter = RosterFilter.LIVING // the story is with the living again
@@ -242,6 +246,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Reach in and touch the being you're following. */
     fun invoke(action: GodAction) {
+        snapshotForUndo()
         val id = followedId
         when (action) {
             GodAction.PROVIDE -> god.provide(id)
@@ -257,7 +262,18 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Call a new being into the world and follow it straight away. */
     fun spawnBeing() {
+        snapshotForUndo()
         followedId = god.create()
+        rosterFilter = RosterFilter.LIVING
+        realmFilter = null
+        timeline.maybeRecord(sim)
+        publish()
+    }
+
+    /** Call a new being into the world at a tapped spot, and follow it. */
+    fun spawnBeingAt(x: Int, y: Int) {
+        snapshotForUndo()
+        followedId = god.createAt(x, y)
         rosterFilter = RosterFilter.LIVING
         realmFilter = null
         timeline.maybeRecord(sim)
@@ -266,7 +282,38 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
 
     /** End the life of the being you're following. */
     fun smiteFollowed() {
+        snapshotForUndo()
         god.smite(followedId)
+        publish()
+    }
+
+    // ---- over all of them at once ----------------------------------------------
+
+    fun blessAll() { snapshotForUndo(); god.blessAll(); publish() }
+    fun provideAll() { snapshotForUndo(); god.provideAll(); publish() }
+    fun warmAll() { snapshotForUndo(); god.warmAll(); publish() }
+
+    // ---- undo the last god act -------------------------------------------------
+
+    /** Snapshot the world right before a divine act, so it can be taken back. */
+    private fun snapshotForUndo() {
+        undoStack.addLast(Persistence.serialize(Persistence.snapshot(sim)))
+        while (undoStack.size > 12) undoStack.removeFirst()
+    }
+
+    /** Undo the last god act, restoring the world to just before it. */
+    fun undo() {
+        val json = undoStack.removeLastOrNull() ?: return
+        loop?.cancel()
+        speed = Speed.PAUSED
+        sim = Persistence.restore(Persistence.deserialize(json))
+        god = God(sim)
+        // If what we undid was a spawn, the being we were following may be gone.
+        if (sim.byId(followedId)?.alive != true) {
+            followedId = sim.living().firstOrNull()?.id ?: followedId
+        }
+        resetMomentTracking()
+        save()
         publish()
     }
 
@@ -309,6 +356,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
      * arrive as the engine enum names the UI mirrored.
      */
     fun decreeFate(triggerId: String, boonId: String) {
+        snapshotForUndo()
         val trigger = FateTrigger.valueOf(triggerId)
         val boon = FateBoon.valueOf(boonId)
         god.decree(followedId, trigger, boon)
@@ -403,6 +451,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
                 )
             },
             chronicle = sim.chronicle.significant(80).map { it.text }.reversed(),
+            canUndo = undoStack.isNotEmpty(),
         )
     }
 

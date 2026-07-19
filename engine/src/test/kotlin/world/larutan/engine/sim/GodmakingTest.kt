@@ -29,6 +29,14 @@ class GodmakingTest {
     }
 
     @Test
+    fun spawnCanPlaceAtAChosenSpot() {
+        val sim = freshSim(seed = 7L)
+        val b = sim.spawn(5, 8)
+        assertEquals(5, b.x, "it appears where it was called")
+        assertEquals(8, b.y)
+    }
+
+    @Test
     fun strikeDownEndsALife() {
         val sim = freshSim(seed = 4L)
         val victim = sim.beings.first()

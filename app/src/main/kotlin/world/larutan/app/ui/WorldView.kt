@@ -50,6 +50,7 @@ fun WorldView(
     beings: List<BeingDot>,
     map: MapView,
     onSelect: (Int) -> Unit,
+    onPlace: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Zoom is a plain scale on the cell size; pan shifts the origin. Keeping the
@@ -86,16 +87,26 @@ fun WorldView(
                     }
                 }
                 .pointerInput(world.width, world.height, beings) {
-                    detectTapGestures { tap ->
+                    fun tileOf(x: Float, y: Float): Pair<Int, Int>? {
                         val cell = (canvasPx * zoom) / world.width
-                        if (cell <= 0f) return@detectTapGestures
-                        val gx = ((tap.x - pan.x) / cell).toInt()
-                        val gy = ((tap.y - pan.y) / cell).toInt()
-                        val hit = beings
-                            .filter { it.alive }
-                            .minByOrNull { abs(it.x - gx) + abs(it.y - gy) }
-                        if (hit != null && abs(hit.x - gx) + abs(hit.y - gy) <= 2) onSelect(hit.id)
+                        if (cell <= 0f) return null
+                        val gx = ((x - pan.x) / cell).toInt().coerceIn(0, world.width - 1)
+                        val gy = ((y - pan.y) / cell).toInt().coerceIn(0, world.height - 1)
+                        return gx to gy
                     }
+                    detectTapGestures(
+                        // A tap chooses whom to follow -- the nearest being to the tap.
+                        onTap = { tap ->
+                            val (gx, gy) = tileOf(tap.x, tap.y) ?: return@detectTapGestures
+                            val hit = beings.filter { it.alive }.minByOrNull { abs(it.x - gx) + abs(it.y - gy) }
+                            if (hit != null && abs(hit.x - gx) + abs(hit.y - gy) <= 2) onSelect(hit.id)
+                        },
+                        // A long press calls a new being into being, right where you held.
+                        onLongPress = { press ->
+                            val (gx, gy) = tileOf(press.x, press.y) ?: return@detectTapGestures
+                            onPlace(gx, gy)
+                        },
+                    )
                 },
         ) {
             val cell = (size.width / world.width) * zoom
