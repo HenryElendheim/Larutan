@@ -1275,6 +1275,36 @@ class Simulation(
         fadeTheDead()
         maybeNameSettlement()
         recognizeDivision()
+        maybeSchism()
+    }
+
+    /**
+     * A people already split in belief may, one day, split in fact: the smaller camp
+     * gathers itself and goes off to make its own place, apart from the rest (§9).
+     */
+    internal fun maybeSchism() {
+        if (world.schismed || !world.divided) return
+        if (!rng.chance(0.02)) return
+        val camps = living().filter { it.creed != null }.groupBy { it.creed!! }
+        if (camps.size < 2) return
+        val breakaway = camps.values.minByOrNull { it.size } ?: return
+        if (breakaway.size < 2) return
+
+        // Away from the crowd, to a far corner of the world.
+        val cx = living().map { it.x }.average()
+        val cy = living().map { it.y }.average()
+        val tx = if (cx < world.width / 2.0) world.width - 3 else 2
+        val ty = if (cy < world.height / 2.0) world.height - 3 else 2
+        breakaway.forEachIndexed { i, b ->
+            b.x = (tx + (i % 3)).coerceIn(0, world.width - 1)
+            b.y = (ty + (i / 3)).coerceIn(0, world.height - 1)
+            b.homeX = -1; b.homeY = -1 // they leave the old home behind
+        }
+        world.schismed = true
+        val creed = breakaway.first().creed!!
+        chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+            "Those who held ${creed.statement} broke away, and went to make their own place.",
+            breakaway.first().id, significant = true))
     }
 
     /**
