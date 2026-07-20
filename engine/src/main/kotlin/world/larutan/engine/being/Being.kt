@@ -87,6 +87,9 @@ class Being(
     /** True once they've a place to call home. */
     val hasHome: Boolean get() = homeX >= 0 && homeY >= 0
 
+    /** The conviction they hold most firmly, if it's strong — the seed of which camp they lean to. */
+    val creed: BeliefKind? get() = beliefs.maxByOrNull { it.strength }?.takeIf { it.strength > 0.3 }?.kind
+
     fun relationshipWith(otherId: Int): Relationship =
         relationships.getOrPut(otherId) { Relationship(otherId) }
 

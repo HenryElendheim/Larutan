@@ -116,6 +116,7 @@ class World(
     var settlementName: String? = null, // the name the group gives its home ground, once it settles
     var foundingMyth: String? = null, // the group's origin story, retold and shaping what they believe
     var yearBounty: Double = 1.0, // how generous this year's land is -> a year of plenty or of want
+    var divided: Boolean = false, // once the people have split into camps of belief (§9)
 ) {
     val inHarshSpell: Boolean get() = harshSpell > 0
 

@@ -692,12 +692,18 @@ class Simulation(
             return
         }
 
-        // How warmly they take to each other is coloured by standing: a well-regarded
-        // soul is met openly, an ill-regarded one warily (§4.8).
+        // How warmly they take to each other is coloured by standing -- a well-regarded
+        // soul is met openly, an ill-regarded one warily -- and by creed: shared conviction
+        // is a kinship, a differing one a quiet friction (§4.8, §9).
         val base = 2.0 + (b.personality.warmth + other.personality.warmth)
+        val creedShift = when {
+            b.creed != null && b.creed == other.creed -> 1.5
+            b.creed != null && other.creed != null -> -1.5
+            else -> 0.0
+        }
         val wasStranger = rel.sentiment == Sentiment.STRANGER
-        rel.warm(base + other.reputation * 1.5)
-        otherRel.warm(base + b.reputation * 1.5)
+        rel.warm(base + other.reputation * 1.5 + creedShift)
+        otherRel.warm(base + b.reputation * 1.5 + creedShift)
         b.drives.change(DriveType.CONNECTION, 24.0)
         b.drives.change(DriveType.INTIMACY, 10.0)
         other.drives.change(DriveType.CONNECTION, 18.0)
@@ -1268,6 +1274,23 @@ class Simulation(
         }
         fadeTheDead()
         maybeNameSettlement()
+        recognizeDivision()
+    }
+
+    /**
+     * When two real camps of belief have formed among a settled people, the group comes
+     * to see itself as split -- the root of factions (§9). Recognized once.
+     */
+    internal fun recognizeDivision() {
+        if (world.divided || world.foundingMyth == null) return
+        val camps = living().mapNotNull { it.creed }.groupingBy { it }.eachCount()
+        val top = camps.entries.sortedByDescending { it.value }
+        if (top.size >= 2 && top[0].value >= 3 && top[1].value >= 3) {
+            world.divided = true
+            chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                "The people have come to see the world two ways: some hold ${top[0].key.statement}, others that ${top[1].key.statement}.",
+                significant = true))
+        }
     }
 
     /**
