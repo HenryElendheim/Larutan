@@ -117,6 +117,7 @@ private fun MainScreen(
             onChronicle = onChronicle,
             onSpawn = vm::spawnBeing,
             onUndo = vm::undo,
+            onRedo = vm::redo,
         )
         state.moment?.let {
             MomentBanner(it, onOpen = vm::openMoment, onDismiss = vm::dismissMoment)
@@ -207,6 +208,7 @@ private fun WorldBar(
     onChronicle: () -> Unit,
     onSpawn: () -> Unit,
     onUndo: () -> Unit,
+    onRedo: () -> Unit,
 ) {
     val w = state.world
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -240,6 +242,7 @@ private fun WorldBar(
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NavPill("New being", onSpawn)
             if (state.canUndo) NavPill("Undo", onUndo)
+            if (state.canRedo) NavPill("Redo", onRedo)
             NavPill("Chronicle", onChronicle)
             NavPill("Settings", onSettings)
         }

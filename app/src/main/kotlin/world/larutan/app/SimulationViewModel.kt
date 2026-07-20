@@ -61,8 +61,10 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
     // A rolling history of the world, so time can be rolled back (§10.5). Session-only.
     private val timeline = Timeline()
 
-    // A short stack of snapshots taken just before each god act, so they can be undone.
+    // A short stack of snapshots taken just before each god act, so they can be undone,
+    // and a matching stack of undone states, so they can be put back.
     private val undoStack = ArrayDeque<String>()
+    private val redoStack = ArrayDeque<String>()
 
     // Significant-moment surfacing (§10.4): how many significant events we've already
     // shown, and the latest one still up on the banner.
@@ -299,28 +301,44 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
     fun makeWaterAt(x: Int, y: Int) { snapshotForUndo(); god.makeWater(x, y); publish() }
     fun raiseShelterAt(x: Int, y: Int) { snapshotForUndo(); god.raiseShelter(x, y); publish() }
 
-    // ---- undo the last god act -------------------------------------------------
+    // ---- undo / redo the last god act ------------------------------------------
+
+    private fun snapshotOf(): String = Persistence.serialize(Persistence.snapshot(sim))
 
     /** Snapshot the world right before a divine act, so it can be taken back. */
     private fun snapshotForUndo() {
-        undoStack.addLast(Persistence.serialize(Persistence.snapshot(sim)))
+        undoStack.addLast(snapshotOf())
         while (undoStack.size > 12) undoStack.removeFirst()
+        redoStack.clear() // a fresh act branches history -> nothing to redo onto
     }
 
-    /** Undo the last god act, restoring the world to just before it. */
-    fun undo() {
-        val json = undoStack.removeLastOrNull() ?: return
+    /** Swap the world for a stored snapshot, rebinding everything to it. */
+    private fun restoreFrom(json: String) {
         loop?.cancel()
         speed = Speed.PAUSED
         sim = Persistence.restore(Persistence.deserialize(json))
         god = God(sim)
-        // If what we undid was a spawn, the being we were following may be gone.
+        // The being we followed may be gone (e.g. an undone spawn); fall back to a living one.
         if (sim.byId(followedId)?.alive != true) {
             followedId = sim.living().firstOrNull()?.id ?: followedId
         }
         resetMomentTracking()
         save()
         publish()
+    }
+
+    /** Undo the last god act, restoring the world to just before it. */
+    fun undo() {
+        val json = undoStack.removeLastOrNull() ?: return
+        redoStack.addLast(snapshotOf()) // remember where we were, so it can be redone
+        restoreFrom(json)
+    }
+
+    /** Redo a god act that was undone. */
+    fun redo() {
+        val json = redoStack.removeLastOrNull() ?: return
+        undoStack.addLast(snapshotOf()) // so the redo can itself be undone
+        restoreFrom(json)
     }
 
     // ---- true godhood: edit the being you're following directly ----------------
@@ -458,6 +476,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             },
             chronicle = sim.chronicle.significant(80).map { it.text }.reversed(),
             canUndo = undoStack.isNotEmpty(),
+            canRedo = redoStack.isNotEmpty(),
         )
     }
 
