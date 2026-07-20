@@ -101,7 +101,7 @@ private fun MainScreen(
     onChronicle: () -> Unit,
     onEdit: () -> Unit,
 ) {
-    var placeMode by remember { mutableStateOf(PlaceMode.BEING) }
+    var placeMode: PlaceMode? by remember { mutableStateOf(null) }
     Column(
         Modifier
             .fillMaxSize()
@@ -126,6 +126,7 @@ private fun MainScreen(
             world = state.world,
             beings = state.beings,
             map = state.map,
+            placing = placeMode != null,
             onSelect = vm::follow,
             onPlace = { x, y ->
                 when (placeMode) {
@@ -133,17 +134,21 @@ private fun MainScreen(
                     PlaceMode.FOOD -> vm.growFoodAt(x, y)
                     PlaceMode.WATER -> vm.makeWaterAt(x, y)
                     PlaceMode.SHELTER -> vm.raiseShelterAt(x, y)
+                    null -> {}
                 }
             },
         )
-        // Pick what a long-press on the map lays down -- a being, or a reshaping of the land.
+        // Pick what a tap on the map lays down. Tap the chosen one again to turn it off.
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PlaceMode.entries.forEach { mode ->
-                Chip(label = mode.label, selected = mode == placeMode) { placeMode = mode }
+                Chip(label = mode.label, selected = mode == placeMode) {
+                    placeMode = if (placeMode == mode) null else mode
+                }
             }
         }
         Text(
-            "Long-press the map to place ${placeMode.label}.",
+            placeMode?.let { "Tap the map to place ${it.label}. Tap ${it.label} again to stop." }
+                ?: "Tap a being to follow them. Or pick something below to place by tapping.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -227,7 +232,8 @@ private fun WorldBar(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    if (w.harshSpell) "${w.timeOfDay} · ${w.weather} · a hard spell" else "${w.timeOfDay} · ${w.weather}",
+                    // In a hard spell the cold is the story, so don't also list the cold-snap weather.
+                    if (w.harshSpell) "${w.timeOfDay} · a hard spell" else "${w.timeOfDay} · ${w.weather}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (w.harshSpell) Clay else MaterialTheme.colorScheme.onBackground,
                 )

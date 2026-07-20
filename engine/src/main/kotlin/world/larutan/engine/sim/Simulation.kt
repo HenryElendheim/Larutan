@@ -1275,8 +1275,30 @@ class Simulation(
         fadeTheDead()
         maybeNameSettlement()
         recognizeDivision()
+        recognizeCampFigures()
         maybeSchism()
         maybeReunite()
+    }
+
+    /**
+     * A divided people looks not to one figure but to two: each camp comes to have its
+     * own -- the most-esteemed grown soul who holds that creed (§9).
+     */
+    internal fun recognizeCampFigures() {
+        if (!world.divided) return
+        val camps = living().filter { it.creed != null }.groupBy { it.creed!! }
+        for ((creed, members) in camps) {
+            if (members.size < 3) continue
+            val figure = members
+                .filter { it.lifeStage == LifeStage.ADULT || it.lifeStage == LifeStage.ELDER }
+                .maxByOrNull { it.reputation } ?: continue
+            if (figure.reputation < 0.3 || figure.eminent) continue
+            figure.eminent = true
+            regard(figure, 0.1)
+            chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                "Among those who hold ${creed.statement}, they have come to look to ${figure.name}.",
+                figure.id, significant = true))
+        }
     }
 
     /**
