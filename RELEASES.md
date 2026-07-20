@@ -1,5 +1,16 @@
 # Releases
 
+## Larutan v0.2.7
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+Small but handy: Undo now has its counterpart. A Redo appears once you've undone a
+divine act -- a spawn, a strike, a blessing, a reshaping of the land -- and puts it back
+just as it was. A fresh act clears the redo trail, the way you'd expect. Reach in freely;
+you can always step back and forth.
+
 ## Larutan v0.2.6
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
