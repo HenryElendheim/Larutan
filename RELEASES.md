@@ -1,5 +1,18 @@
 # Releases
 
+## Larutan v0.2.4
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, belief becomes something that draws a people together or sets it at
+odds. A being's firmest conviction is now their creed, and it colours how they meet
+each other: a shared conviction is a kinship that warms a bond faster, a differing one
+a quiet friction that cools it. And when two real camps of belief take hold among a
+settled people -- some holding one way, some another -- the group comes to see itself as
+split, and that division is set down in the chronicle as it happens. The seed of factions.
+
 ## Larutan v0.2.3
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
