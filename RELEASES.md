@@ -1,5 +1,20 @@
 # Releases
 
+## Larutan v0.2.8
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+Fixes and a beat. Placing on the map is a plain tap now, not a long-press: pick what
+you want to lay down -- a being, food, water, or shelter -- and tap the map to place it,
+and tap that same choice again to turn it off and go back to tapping beings to follow.
+And the top bar no longer doubles up the cold during a hard spell; it reads cleanly now.
+
+New: a divided people looks to two figures, not one. Once the group has split into camps
+of belief, each camp comes to have its own -- the most-esteemed elder who holds that
+creed -- so the leadership divides along with the people.
+
 ## Larutan v0.2.7
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
