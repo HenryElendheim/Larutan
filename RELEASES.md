@@ -1,5 +1,17 @@
 # Releases
 
+## Larutan v0.2.5
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, a division in belief can become a division in fact. When a settled
+people has already split into two camps of conviction, the smaller camp may one day
+gather itself and break away -- going off to a far corner of the world, leaving the old
+home behind to make its own place. An occasional, weighty parting, set down in the
+chronicle when it comes, and plain to see on the map as one people becomes two.
+
 ## Larutan v0.2.4
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.
