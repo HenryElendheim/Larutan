@@ -118,6 +118,7 @@ class World(
     var yearBounty: Double = 1.0, // how generous this year's land is -> a year of plenty or of want
     var divided: Boolean = false, // once the people have split into camps of belief (§9)
     var schismed: Boolean = false, // once a camp has physically broken away to its own ground (§9)
+    var breakawaySettlement: String? = null, // the name the broken-away camp gives its new place
 ) {
     val inHarshSpell: Boolean get() = harshSpell > 0
 

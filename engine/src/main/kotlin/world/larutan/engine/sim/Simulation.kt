@@ -1276,6 +1276,7 @@ class Simulation(
         maybeNameSettlement()
         recognizeDivision()
         maybeSchism()
+        maybeReunite()
     }
 
     /**
@@ -1301,10 +1302,31 @@ class Simulation(
             b.homeX = -1; b.homeY = -1 // they leave the old home behind
         }
         world.schismed = true
+        val newPlace = Names.place(rng)
+        world.breakawaySettlement = newPlace
         val creed = breakaway.first().creed!!
         chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
-            "Those who held ${creed.statement} broke away, and went to make their own place.",
+            "Those who held ${creed.statement} broke away, and went off to make a new place they called $newPlace.",
             breakaway.first().id, significant = true))
+    }
+
+    /**
+     * A parting need not be forever: if the two peoples drift back within reach of one
+     * another, they come together again -- one place once more, though the old difference
+     * of belief may still sit between them (§9).
+     */
+    internal fun maybeReunite() {
+        if (!world.schismed) return
+        val folk = living()
+        if (folk.size < 2) return
+        val spread = (folk.maxOf { it.x } - folk.minOf { it.x }) + (folk.maxOf { it.y } - folk.minOf { it.y })
+        if (spread <= 8) {
+            world.schismed = false
+            world.breakawaySettlement = null
+            chronicle.add(WorldEvent(world.tick, EventKind.MILESTONE,
+                "The two peoples had drifted back within sight of each other, and became one again.",
+                significant = true))
+        }
     }
 
     /**
