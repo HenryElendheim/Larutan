@@ -114,6 +114,10 @@ private fun Header(b: FollowedBeing) {
             if (b.ailing) {
                 Text("  unwell", style = MaterialTheme.typography.labelSmall, color = Clay)
             }
+            // A habit grown into a vice, named plainly -- what the hardship made of them.
+            b.vice?.let {
+                Text("  $it", style = MaterialTheme.typography.labelSmall, color = Clay)
+            }
             // At home, and how the group regards them.
             if (b.atHome) {
                 Text("  home", style = MaterialTheme.typography.labelSmall, color = Moss)

@@ -78,8 +78,19 @@ class Being(
     var lastThought: String? = null,
     val recentThoughts: MutableList<String> = mutableListOf(),
     var lastDream: String? = null,
+    // --- coping and its costs (§4.4) ---
+    /** How strongly each maladaptive coping style has taken hold, 0..1. */
+    val habits: MutableMap<CopingHabit, Double> = mutableMapOf(),
+    /** Dependency on numbing: relief shrinks as this climbs, so they reach for it more. */
+    var tolerance: Double = 0.0,
 ) {
     val lifeStage: LifeStage get() = LifeStage.forAge(ageYears)
+
+    /** The habit grown strong enough to read as a vice, if any. */
+    val vice: CopingHabit? get() = habits.entries.filter { it.value >= VICE_THRESHOLD }.maxByOrNull { it.value }?.key
+
+    /** How firmly a given coping style has taken hold, 0..1. */
+    fun habitStrength(h: CopingHabit): Double = habits[h] ?: 0.0
 
     /** Noticeably unwell — enough for it to show and for others to want to tend them. */
     val ailing: Boolean get() = alive && illness > 0.15
@@ -112,4 +123,9 @@ class Being(
     /** A rough one-line read of how they're doing, for logs and the panel header. */
     fun statusLine(): String =
         "$name ($generation·${lifeStage.label}) — ${emotion.moodLabel()}, ${currentAction}"
+
+    companion object {
+        /** How firm a habit must be before it reads as a vice. */
+        const val VICE_THRESHOLD = 0.5
+    }
 }

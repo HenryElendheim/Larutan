@@ -1,5 +1,23 @@
 # Releases
 
+## Larutan v0.3.0
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+New in this one, the beings carry what hurts the way real people do. When the weight
+of unmet needs and hard losses mounts, a being reaches for relief -- and the way they
+reach is who they are: an aloof one pulls away from everyone, a hot-tempered one lashes
+out, a driven one buries it all in work, a dark-minded one broods the same hurt over
+and over, and the rest fall back on numbing it. Each eases the weight now and costs
+later, and reached for again and again it hardens into a habit, then into a visible
+vice, set down in the chronicle as it takes hold. The numbing builds a real dependency
+-- it takes more each time for less relief, and so pulls them back sooner. But none of
+it is destiny: a bonded soul close by, or simply the weight lifting, loosens the grip,
+and a being can climb back out -- which is written down too. Follow someone and the
+panel names the vice plainly, as what the hardship made of them, never a failing.
+
 ## Larutan v0.2.9
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.

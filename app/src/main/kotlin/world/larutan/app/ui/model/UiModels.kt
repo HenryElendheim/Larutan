@@ -146,6 +146,7 @@ data class FollowedBeing(
     val ailing: Boolean,       // unwell right now, so the panel can show it
     val atHome: Boolean,       // currently at the place they call home
     val standing: String?,     // how the group regards them, in a word, or null if unremarkable
+    val vice: String?,         // a maladaptive habit grown into a vice, or null
     val immortal: Boolean,
     val realm: String?,        // set once they've died
     val deathCause: String?,

@@ -4,6 +4,7 @@ import world.larutan.engine.Rng
 import world.larutan.engine.action.ActionType
 import world.larutan.engine.being.Being
 import world.larutan.engine.being.BeliefKind
+import world.larutan.engine.being.CopingHabit
 import world.larutan.engine.being.DriveType
 import world.larutan.engine.being.EmotionName
 import world.larutan.engine.being.Goal
@@ -944,36 +945,133 @@ class Simulation(
 
     // ---- coping -------------------------------------------------------------
 
-    private fun cope(b: Being) {
-        if (b.emotion.distressLoad < 45) return
-        // Personality and history choose the coping; relief is real, the cost comes later.
+    internal fun cope(b: Being) {
+        // Habits fade a little every hour; support and low distress fade them faster.
+        fadeHabits(b)
+
+        // A hardened habit lowers the bar -- a hooked being reaches for relief sooner.
+        val worst = b.habits.maxByOrNull { it.value }
+        val pull = worst?.value ?: 0.0
+        val threshold = 45.0 - 18.0 * pull
+        if (b.emotion.distressLoad < threshold) return
+
         val p = b.personality
-        when {
-            p.warmth < -0.3 -> { // withdrawal: eases strain now, deepens loneliness
+
+        // If a habit has taken hold, the loop pulls them back to it before anything else.
+        if (worst != null && pull >= 0.35 && rng.chance(pull)) {
+            applyHabit(b, worst.key)
+            return
+        }
+
+        // Recovery through others: a bonded soul close by, and a being not too walled
+        // off, grieves openly instead -- and being reached eases the habits' grip.
+        val comforter = comforterNear(b)
+        if (comforter != null && p.warmth > -0.3 && pull < 0.5) {
+            execute(ActionType.GRIEVE, b)
+            b.emotion.feel(EmotionName.RELIEF, 0.12)
+            b.emotion.distressLoad -= 6
+            loosenHabits(b, 0.03)
+            return
+        }
+
+        // Otherwise personality and history choose which way they turn.
+        val habit = when {
+            p.temper > 0.3 -> CopingHabit.TEMPER
+            p.warmth < -0.3 -> CopingHabit.WITHDRAWAL
+            p.industry > 0.3 -> CopingHabit.OVERWORK
+            p.optimism < -0.3 -> CopingHabit.RUMINATION
+            else -> CopingHabit.NUMBING
+        }
+        applyHabit(b, habit)
+    }
+
+    /** One maladaptive turn: real relief now, a cost later, and the habit dug deeper. */
+    private fun applyHabit(b: Being, habit: CopingHabit) {
+        when (habit) {
+            CopingHabit.WITHDRAWAL -> {
                 b.currentAction = "withdrawing"
                 b.emotion.distressLoad -= 10
                 b.drives.change(DriveType.CONNECTION, -6.0)
                 b.emotion.feel(EmotionName.LONELINESS, 0.1)
-                chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} pulled away from the others.", b.id))
             }
-            p.temper > 0.3 -> { // lashing out: vents, damages a bond
-                val other = nearestOther(b)
+            CopingHabit.TEMPER -> {
                 b.emotion.distressLoad -= 12
+                val other = nearestOther(b)
                 if (other != null) {
                     b.relationshipWith(other.id).cool(6.0)
                     b.moralLedger -= 0.3 // venting the hurt onto others weighs against them
                     regard(b, -0.03) // and it's seen
                     b.emotion.feel(EmotionName.ANGER, 0.1)
-                    chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} lashed out at ${other.name}.", b.id, other.id))
                     maybeRift(b, other)
                 }
             }
-            else -> { // adaptive: grieve openly, seek comfort
-                execute(ActionType.GRIEVE, b)
-                b.emotion.feel(EmotionName.RELIEF, 0.1)
+            CopingHabit.OVERWORK -> {
+                // Burying feeling in labour: it quiets the mind but wears the body down.
+                b.currentAction = "working without rest"
+                b.emotion.distressLoad -= 9
+                b.drives.change(DriveType.ENERGY, -7.0)
+                b.drives.change(DriveType.PURPOSE, 3.0)
+            }
+            CopingHabit.RUMINATION -> {
+                // Looping on the hurt: the weakest relief, and it keeps the ache lit.
+                b.currentAction = "brooding"
+                b.emotion.distressLoad -= 6
+                b.emotion.arousal = (b.emotion.arousal + 0.05).coerceAtMost(1.0)
+                b.emotion.valence = (b.emotion.valence - 0.04).coerceAtLeast(-1.0)
+                b.emotion.feel(EmotionName.DESPAIR, 0.08)
+            }
+            CopingHabit.NUMBING -> {
+                // The dependency: relief shrinks as tolerance climbs, so they need more.
+                b.currentAction = "numbing the hurt"
+                val relief = 11.0 * (1.0 - b.tolerance * 0.7)
+                b.emotion.distressLoad -= relief
+                b.tolerance = (b.tolerance + 0.06).coerceAtMost(0.95)
+                b.drives.change(DriveType.HEALTH, -3.0)
+                b.drives.change(DriveType.ENERGY, -3.0)
             }
         }
+        reinforce(b, habit, 0.09)
     }
+
+    /** Dig a habit deeper, and mark the turn it hardens into a vice. */
+    private fun reinforce(b: Being, habit: CopingHabit, amount: Double) {
+        val before = b.habitStrength(habit)
+        val after = (before + amount).coerceIn(0.0, 1.0)
+        b.habits[habit] = after
+        if (before < Being.VICE_THRESHOLD && after >= Being.VICE_THRESHOLD) {
+            chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} ${habit.fallInto}", b.id, significant = true))
+        }
+    }
+
+    /** Habits soften on their own, faster when the weight has lifted. */
+    private fun fadeHabits(b: Being) {
+        if (b.habits.isEmpty() && b.tolerance <= 0.0) return
+        val rate = if (b.emotion.distressLoad < 25.0) 0.015 else 0.006
+        loosenHabits(b, rate)
+        b.tolerance = (b.tolerance - 0.004).coerceAtLeast(0.0)
+    }
+
+    /** Ease every habit by an amount, and mark any that a being climbs back out of. */
+    private fun loosenHabits(b: Being, amount: Double) {
+        val it = b.habits.entries.iterator()
+        while (it.hasNext()) {
+            val e = it.next()
+            val before = e.value
+            val after = before - amount
+            if (before >= Being.VICE_THRESHOLD && after < Being.VICE_THRESHOLD) {
+                chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} ${e.key.climbOut}", b.id, significant = true))
+            }
+            if (after <= 0.02) it.remove() else e.setValue(after)
+        }
+    }
+
+    /** A being bonded to this one, close enough to reach in and comfort them. */
+    private fun comforterNear(b: Being): Being? =
+        beings.firstOrNull {
+            it.alive && it.id != b.id &&
+                chebyshev(b.x, b.y, it.x, it.y) <= 4 &&
+                (b.relationships[it.id]?.bond ?: 0.0) > 40
+        }
 
     // ---- thoughts -----------------------------------------------------------
 

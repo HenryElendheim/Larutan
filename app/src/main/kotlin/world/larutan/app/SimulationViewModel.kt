@@ -537,6 +537,7 @@ class SimulationViewModel(app: Application) : AndroidViewModel(app) {
             ailing = ailing,
             atHome = hasHome && kotlin.math.max(kotlin.math.abs(x - homeX), kotlin.math.abs(y - homeY)) <= 1,
             standing = standingLabel(this),
+            vice = vice?.mark,
             immortal = immortal,
             realm = realm?.label,
             deathCause = deathCause,
