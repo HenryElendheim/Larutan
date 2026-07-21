@@ -42,22 +42,18 @@ import world.larutan.app.ui.theme.Tide
 /**
  * The person. When you follow a being, this is what you read: what's pressing,
  * how they feel, what they're reaching for, what they think and dream and carry.
- * The 2D view is the map; this panel is the product.
+ * The 2D view is the map; this panel is the product. Just the reading of a life --
+ * the god's reach-in lives on its own page now, in FollowedPowers below.
  */
 @Composable
 fun InnerLifePanel(
     being: FollowedBeing,
-    onGod: (GodAction) -> Unit,
-    onReincarnate: () -> Unit,
-    onDecreeFate: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Header(being)
         if (being.alive) {
-            // A living being: the full inner life, and the powers to reach into it.
-            GodTouch(onGod, immortal = being.immortal)
-            FateComposer(being.fates, onDecreeFate)
+            // A living being: the full inner life.
             if (being.emotions.isNotEmpty()) Emotions(being.emotions)
             being.lastThought?.let { Utterance(label = "Thinking", text = it) }
             being.goal?.let { Goal(it) }
@@ -69,13 +65,35 @@ fun InnerLifePanel(
             if (being.memories.isNotEmpty()) Memories(being.memories)
         } else {
             // A soul at rest: no drives to tend, but a last word and the thoughts they carried.
-            DeadActions(onReincarnate)
             being.epitaph?.let { Utterance(label = "Remembered as", text = it, dream = true) }
             being.finalThought?.let { Utterance(label = "Final thought", text = it) }
             if (being.pastThoughts.isNotEmpty()) PastThoughts(being.pastThoughts)
             if (being.beliefs.isNotEmpty()) Beliefs("What they believed", being.beliefs)
             if (being.relationships.isNotEmpty()) Relationships(being.relationships)
             if (being.memories.isNotEmpty()) Memories(being.memories)
+        }
+    }
+}
+
+/**
+ * The god's reach into whoever you're following, gathered on the Powers page:
+ * for the living, the touch and the setting of a fate; for the dead, the one
+ * power still left -- to send them back into a new life.
+ */
+@Composable
+fun FollowedPowers(
+    being: FollowedBeing,
+    onGod: (GodAction) -> Unit,
+    onReincarnate: () -> Unit,
+    onDecreeFate: (String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (being.alive) {
+            GodTouch(onGod, immortal = being.immortal)
+            FateComposer(being.fates, onDecreeFate)
+        } else {
+            DeadActions(onReincarnate)
         }
     }
 }

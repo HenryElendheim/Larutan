@@ -1,5 +1,19 @@
 # Releases
 
+## Larutan v0.2.9
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+The whole screen is simpler now. Instead of one endless scroll with everything at
+once, there are three plain tabs along the bottom. Watch holds the world -- the map,
+what you lay on it, the speed, and whom to follow. Life is just the reading of
+whoever you're following, their inner life and nothing else. Powers gathers every
+reach of the god's hand in one place -- the touch, the fates, the shaping, a new
+being, the blessings over everyone, and the rewind. One thing to look at at a time,
+so it's far easier to read and to use.
+
 ## Larutan v0.2.8
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.

@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,11 +51,15 @@ import world.larutan.app.ui.theme.Clay
 import world.larutan.app.ui.theme.Ember
 
 /**
- * The whole screen: the map up top, the clock, and — the point of it all — the
- * inner life of whoever you're following, scrolling below.
+ * The whole screen. It's three plain tabs now, so there's one thing to look at
+ * at a time: Watch the world, read the Life you're following, or reach in with
+ * your Powers. Settings, the chronicle, and the shaping bench open over the top.
  */
 /** Which page of the app is up. Settings and the chronicle each get their own now. */
 private enum class Screen { MAIN, SETTINGS, CHRONICLE, EDIT }
+
+/** The three tabs of the main screen, along the bottom. */
+private enum class Tab(val label: String) { WATCH("Watch"), LIFE("Life"), POWERS("Powers") }
 
 @Composable
 fun LarutanApp(vm: SimulationViewModel) {
@@ -101,122 +106,39 @@ private fun MainScreen(
     onChronicle: () -> Unit,
     onEdit: () -> Unit,
 ) {
+    var tab by remember { mutableStateOf(Tab.WATCH) }
+    // The place-mode lives up here so it's kept when you switch tabs and back.
     var placeMode: PlaceMode? by remember { mutableStateOf(null) }
+
     Column(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(top = 40.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(top = 40.dp),
     ) {
-        WorldBar(
-            state,
-            onSettings = onSettings,
-            onChronicle = onChronicle,
-            onSpawn = vm::spawnBeing,
-            onUndo = vm::undo,
-            onRedo = vm::redo,
-        )
+        TopHeader(state, onSettings = onSettings, onChronicle = onChronicle)
+        // A moment shows above every tab, so nothing worth seeing slips past.
         state.moment?.let {
-            MomentBanner(it, onOpen = vm::openMoment, onDismiss = vm::dismissMoment)
-        }
-        WorldView(
-            world = state.world,
-            beings = state.beings,
-            map = state.map,
-            placing = placeMode != null,
-            onSelect = vm::follow,
-            onPlace = { x, y ->
-                when (placeMode) {
-                    PlaceMode.BEING -> vm.spawnBeingAt(x, y)
-                    PlaceMode.FOOD -> vm.growFoodAt(x, y)
-                    PlaceMode.WATER -> vm.makeWaterAt(x, y)
-                    PlaceMode.SHELTER -> vm.raiseShelterAt(x, y)
-                    null -> {}
-                }
-            },
-        )
-        // Pick what a tap on the map lays down. Tap the chosen one again to turn it off.
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PlaceMode.entries.forEach { mode ->
-                Chip(label = mode.label, selected = mode == placeMode) {
-                    placeMode = if (placeMode == mode) null else mode
-                }
+            Box(Modifier.padding(horizontal = 16.dp).padding(top = 10.dp)) {
+                MomentBanner(it, onOpen = vm::openMoment, onDismiss = vm::dismissMoment)
             }
         }
-        Text(
-            placeMode?.let { "Tap the map to place ${it.label}. Tap ${it.label} again to stop." }
-                ?: "Tap a being to follow them. Or pick something below to place by tapping.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        TimeControls(
-            current = state.speed,
-            onSpeed = vm::setSpeed,
-            onStep = vm::stepOnce,
-        )
-
-        // A god's reach over the whole living crowd at once.
-        BulkPowers(onFeedAll = vm::provideAll, onWarmAll = vm::warmAll, onBlessAll = vm::blessAll)
-
-        if (state.timeline.isNotEmpty()) {
-            TimelineStrip(state.timeline, onRewind = vm::rewindTo)
-        }
-
-        RosterControls(
-            filter = state.rosterFilter,
-            realmFilter = state.realmFilter,
-            onFilter = vm::setRosterFilter,
-            onRealm = vm::setRealmFilter,
-        )
-        if (state.roster.isNotEmpty()) {
-            Roster(state.roster, onSelect = vm::follow)
-        } else {
-            Text(
-                if (state.rosterFilter == RosterFilter.DEAD) "None have passed here yet." else "No one is living.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Spacer(Modifier.height(2.dp))
-
-        val followed = state.followed
-        if (followed != null) {
-            // The god's editing bench for whoever you're following.
-            if (followed.alive) {
-                NavPill("Shape ${followed.name}", onEdit)
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            when (tab) {
+                Tab.WATCH -> WatchTab(state, vm, placeMode, onPlaceMode = { placeMode = it })
+                Tab.LIFE -> LifeTab(state)
+                Tab.POWERS -> PowersTab(state, vm, onEdit = onEdit)
             }
-            InnerLifePanel(
-                followed,
-                onGod = vm::invoke,
-                onReincarnate = vm::reincarnateFollowed,
-                onDecreeFate = vm::decreeFate,
-            )
-        } else {
-            Text(
-                "No one left to follow. The world is quiet.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 24.dp),
-            )
         }
+        TabBar(tab, onTab = { tab = it })
     }
 }
 
+/** A slim, always-there header: the world's clock, and the way to the two pages. */
 @Composable
-private fun WorldBar(
-    state: UiState,
-    onSettings: () -> Unit,
-    onChronicle: () -> Unit,
-    onSpawn: () -> Unit,
-    onUndo: () -> Unit,
-    onRedo: () -> Unit,
-) {
+private fun TopHeader(state: UiState, onSettings: () -> Unit, onChronicle: () -> Unit) {
     val w = state.world
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -244,13 +166,171 @@ private fun WorldBar(
                 )
             }
         }
-        // The two other pages, a god's power to make a new being, and an undo, one tap away.
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NavPill("New being", onSpawn)
-            if (state.canUndo) NavPill("Undo", onUndo)
-            if (state.canRedo) NavPill("Redo", onRedo)
             NavPill("Chronicle", onChronicle)
             NavPill("Settings", onSettings)
+        }
+    }
+}
+
+/** The bottom tab bar: three plain words, the current one lit. */
+@Composable
+private fun TabBar(current: Tab, onTab: (Tab) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(vertical = 6.dp),
+    ) {
+        Tab.entries.forEach { t ->
+            val selected = t == current
+            Text(
+                t.label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onTab(t) }
+                    .padding(vertical = 12.dp),
+            )
+        }
+    }
+}
+
+/** A scrolling body for a tab: even padding, room to breathe. */
+@Composable
+private fun TabScaffold(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        content = content,
+    )
+}
+
+/** Watch: the map, what to lay on it, the speed, and whom to follow. */
+@Composable
+private fun WatchTab(
+    state: UiState,
+    vm: SimulationViewModel,
+    placeMode: PlaceMode?,
+    onPlaceMode: (PlaceMode?) -> Unit,
+) {
+    TabScaffold {
+        WorldView(
+            world = state.world,
+            beings = state.beings,
+            map = state.map,
+            placing = placeMode != null,
+            onSelect = vm::follow,
+            onPlace = { x, y ->
+                when (placeMode) {
+                    PlaceMode.BEING -> vm.spawnBeingAt(x, y)
+                    PlaceMode.FOOD -> vm.growFoodAt(x, y)
+                    PlaceMode.WATER -> vm.makeWaterAt(x, y)
+                    PlaceMode.SHELTER -> vm.raiseShelterAt(x, y)
+                    null -> {}
+                }
+            },
+        )
+        // Pick what a tap on the map lays down. Tap the chosen one again to turn it off.
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PlaceMode.entries.forEach { mode ->
+                Chip(label = mode.label, selected = mode == placeMode) {
+                    onPlaceMode(if (placeMode == mode) null else mode)
+                }
+            }
+        }
+        Text(
+            placeMode?.let { "Tap the map to place ${it.label}. Tap ${it.label} again to stop." }
+                ?: "Tap a being to follow them. Or pick something to place by tapping.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TimeControls(
+            current = state.speed,
+            onSpeed = vm::setSpeed,
+            onStep = vm::stepOnce,
+        )
+        RosterControls(
+            filter = state.rosterFilter,
+            realmFilter = state.realmFilter,
+            onFilter = vm::setRosterFilter,
+            onRealm = vm::setRealmFilter,
+        )
+        if (state.roster.isNotEmpty()) {
+            Roster(state.roster, onSelect = vm::follow)
+        } else {
+            Text(
+                if (state.rosterFilter == RosterFilter.DEAD) "None have passed here yet." else "No one is living.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Life: just the reading of whoever you're following, nothing else. */
+@Composable
+private fun LifeTab(state: UiState) {
+    TabScaffold {
+        val followed = state.followed
+        if (followed != null) {
+            InnerLifePanel(followed)
+        } else {
+            Text(
+                "No one to follow yet. Tap a being on the Watch map, or pick one from the roster.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 24.dp),
+            )
+        }
+    }
+}
+
+/** Powers: everything the god's hand can do, gathered in one place. */
+@Composable
+private fun PowersTab(state: UiState, vm: SimulationViewModel, onEdit: () -> Unit) {
+    TabScaffold {
+        // Making a new being, and taking back the last thing you did.
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NavPill("New being", vm::spawnBeing)
+            if (state.canUndo) NavPill("Undo", vm::undo)
+            if (state.canRedo) NavPill("Redo", vm::redo)
+        }
+
+        val followed = state.followed
+        if (followed != null) {
+            EditLabel("Over ${followed.name}")
+            if (followed.alive) {
+                NavPill("Shape ${followed.name}", onEdit)
+            }
+            FollowedPowers(
+                followed,
+                onGod = vm::invoke,
+                onReincarnate = vm::reincarnateFollowed,
+                onDecreeFate = vm::decreeFate,
+            )
+        } else {
+            Text(
+                "Follow someone to reach into their life.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(Modifier.height(2.dp))
+
+        // A god's reach over the whole living crowd at once.
+        BulkPowers(onFeedAll = vm::provideAll, onWarmAll = vm::warmAll, onBlessAll = vm::blessAll)
+
+        if (state.timeline.isNotEmpty()) {
+            TimelineStrip(state.timeline, onRewind = vm::rewindTo)
         }
     }
 }
