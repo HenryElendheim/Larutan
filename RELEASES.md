@@ -1,5 +1,19 @@
 # Releases
 
+## Larutan v0.3.1
+
+Larutan is a dark-mode life-sim about a few small beings living their own lives.
+You watch their inner lives -- needs, feelings, memories, goals -- follow any one
+of them through a life, and reach in as a god when you want to.
+
+A follow-on to the last: now the vices speak. A being caught in one thinks in its
+voice -- the half-knowing, half-defending way a person talks themselves into what
+they've come to lean on. One lost in numbing thinks "just enough to take the edge
+off, it's less than it used to be"; one pulling away thinks "easier on my own, people
+only ever want something back." So when you follow someone in a bad patch, you hear it
+from the inside, not just as a mark on the panel. And the turns of it stay with them:
+falling into a vice, and later climbing back out, each leaves a memory they carry.
+
 ## Larutan v0.3.0
 
 Larutan is a dark-mode life-sim about a few small beings living their own lives.

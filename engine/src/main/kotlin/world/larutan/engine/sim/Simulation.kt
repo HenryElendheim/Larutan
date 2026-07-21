@@ -1040,6 +1040,7 @@ class Simulation(
         b.habits[habit] = after
         if (before < Being.VICE_THRESHOLD && after >= Being.VICE_THRESHOLD) {
             chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} ${habit.fallInto}", b.id, significant = true))
+            record(b, MemoryKind.REFLECTED, "fell into ${habit.label}", 0.8, -0.7)
         }
     }
 
@@ -1060,6 +1061,7 @@ class Simulation(
             val after = before - amount
             if (before >= Being.VICE_THRESHOLD && after < Being.VICE_THRESHOLD) {
                 chronicle.add(WorldEvent(world.tick, EventKind.COPED, "${b.name} ${e.key.climbOut}", b.id, significant = true))
+                record(b, MemoryKind.REFLECTED, "climbed back from ${e.key.label}", 0.85, 0.7)
             }
             if (after <= 0.02) it.remove() else e.setValue(after)
         }

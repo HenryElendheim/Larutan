@@ -2,6 +2,7 @@ package world.larutan.engine.narrative
 
 import world.larutan.engine.Rng
 import world.larutan.engine.being.Being
+import world.larutan.engine.being.CopingHabit
 import world.larutan.engine.being.DriveType
 import world.larutan.engine.being.EmotionName
 import world.larutan.engine.world.World
@@ -45,6 +46,13 @@ object Thoughts {
                 "I don't feel safe here. Not really.",
             ))
             else -> {}
+        }
+
+        // A being caught in a vice thinks in its voice -- the habit reasoning for them,
+        // in the way a person half-knows and half-defends what they've come to lean on.
+        // Raw feeling still comes first (handled above); this speaks over the ordinary hours.
+        being.vice?.let { v ->
+            if (rng.chance(0.45)) return copingVoice(v, rng)
         }
 
         // An atypical mind falls into its own voice now and then, when nothing urgent
@@ -135,6 +143,35 @@ object Thoughts {
                 "I dreamed the whole world was one long summer, and no one was ever cold.",
             ))
         }
+    }
+
+    /** The half-knowing voice of a vice -- what the habit says to keep itself going. */
+    private fun copingVoice(v: CopingHabit, rng: Rng): String = when (v) {
+        CopingHabit.WITHDRAWAL -> pick(rng, listOf(
+            "Easier on my own. People only ever want something back.",
+            "If I keep to myself, nothing new can land on me. That's the idea, anyway.",
+            "I tell myself I like the quiet. Most of the time I even believe it.",
+        ))
+        CopingHabit.TEMPER -> pick(rng, listOf(
+            "It's out of me before I can catch it, and then it's too late to take back.",
+            "I know I shouldn't have snapped. Knowing never cools it any faster.",
+            "They push, and something in me just goes. I hate it after. Not during.",
+        ))
+        CopingHabit.OVERWORK -> pick(rng, listOf(
+            "If I keep my hands moving, the rest of it can't catch up to me.",
+            "Rest just lets it all back in. I'd sooner be making something.",
+            "As long as there's work, there's a reason not to sit with the other thing.",
+        ))
+        CopingHabit.RUMINATION -> pick(rng, listOf(
+            "I keep turning it over, the same hurt, hunting for where it went wrong.",
+            "My mind won't set it down. Round and round, always the same ground.",
+            "If I think it through enough times, maybe it'll stop hurting. It never does.",
+        ))
+        CopingHabit.NUMBING -> pick(rng, listOf(
+            "Just enough to take the edge off. It's less than it used to be, though.",
+            "It quiets everything for a while. I need more of it than I once did.",
+            "I don't want to feel it right now. That's all. Just not right now.",
+        ))
     }
 
     private fun placeLabel(world: World, x: Int, y: Int): String =
